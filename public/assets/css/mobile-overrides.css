@@ -1,0 +1,135 @@
+/* Mobile overrides for Attendance Management System */
+
+@media (max-width: 991.98px) {
+  body {
+    font-size: 0.95rem;
+  }
+
+  #wrapper {
+    overflow-x: hidden;
+  }
+
+  .content-page {
+    margin-left: 0 !important;
+  }
+
+  .content-page .content {
+    padding: 0;
+  }
+
+  .content-page .container-fluid {
+    padding: 16px;
+  }
+
+  .navbar-custom {
+    margin-left: 0 !important;
+  }
+
+  .topbar-left {
+    width: 64px !important;
+  }
+
+  .topbar-left span {
+    display: none !important;
+  }
+
+  .topbar-left i {
+    display: block !important;
+    line-height: 70px !important;
+  }
+
+  .button-menu-mobile {
+    display: block;
+  }
+
+  .left.side-menu {
+    position: fixed;
+    top: 70px;
+    left: 0;
+    width: 260px;
+    height: calc(100% - 70px);
+    z-index: 1100;
+    transition: left 0.2s ease;
+  }
+
+  .enlarged .left.side-menu {
+    left: -260px;
+  }
+
+  .slimscroll-menu {
+    height: 100% !important;
+  }
+
+  .footer {
+    left: 0 !important;
+  }
+
+  .table-responsive {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table td,
+  .table th {
+    white-space: nowrap;
+  }
+
+  .dataTables_wrapper .dt-buttons,
+  .dataTables_wrapper .dataTables_filter {
+    text-align: left;
+  }
+
+  .dataTables_wrapper .dataTables_filter input {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .page-title-box {
+    padding-bottom: 10px;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .wrapper-page {
+    max-width: 100%;
+    margin: 24px auto;
+    padding: 0 12px;
+  }
+
+  .account-card .account-card-content {
+    padding: 20px;
+  }
+
+  .wrapper-page .logo-admin {
+    width: 60px;
+    height: 60px;
+    line-height: 60px;
+    bottom: -30px;
+  }
+
+  .form-group.row .col-sm-6 {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  .form-group.row .col-sm-6 + .col-sm-6 {
+    margin-top: 10px;
+    text-align: left !important;
+  }
+
+  .form-group.row .btn {
+    width: 100%;
+  }
+
+  .attendance-wide {
+    padding: 0 12px;
+  }
+
+  .attendance-wide .card {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  .card .card-body {
+    padding: 16px;
+  }
+}

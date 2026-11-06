@@ -1,0 +1,14 @@
+node_modules
+vendor
+.git
+.github
+.vscode
+storage/logs/*
+*.cookie
+*.log
+tmp_pdfmake_upgrade
+images-readme
+docs
+daftar-magang
+kms-project-login
+tmp_login.html

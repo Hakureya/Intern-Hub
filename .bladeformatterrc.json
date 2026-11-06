@@ -1,0 +1,8 @@
+{
+  "indentSize": 4,
+  "wrapLineLength": 120,
+  "wrapAttributes": "auto",
+  "endOfLine": "LF",
+  "sortTailwindcssClasses": false,
+  "formatInsideBladeBraces": false
+}

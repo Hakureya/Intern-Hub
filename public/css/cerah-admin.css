@@ -1,0 +1,405 @@
+/* ==========================================================================
+   Cerah theme — layout admin (topbar, sidebar, konten) di atas tema Veltrix.
+   Semua aturan dibatasi pada body.cs-admin agar halaman lain tidak terpengaruh.
+   ========================================================================== */
+
+body.cs-admin {
+    background: var(--cs-bg);
+}
+
+body.cs-admin #wrapper,
+body.cs-admin .content-page {
+    background: var(--cs-bg);
+}
+
+/* ---------- Topbar ---------- */
+body.cs-admin .topbar {
+    background: #f6fafc;
+    border-bottom: 1px solid var(--cs-line);
+    box-shadow: none;
+}
+
+body.cs-admin .topbar .topbar-left {
+    background: #fff !important;
+    border-right: 1px solid var(--cs-line);
+    border-bottom: 0 !important;
+}
+
+body.cs-admin .topbar .topbar-left .logo {
+    display: flex;
+    align-items: center;
+    height: 70px;
+    line-height: 1;
+    padding: 0 18px;
+    margin: 0;
+}
+
+body.cs-admin .topbar .topbar-left .logo .logo-text {
+    display: flex;
+    align-items: center;
+    width: auto;
+}
+
+body.cs-admin .topbar .topbar-left .logo .logo-text-mini {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 70px;
+    padding: 0;
+    color: inherit !important;
+    font-style: normal;
+}
+
+body.cs-admin .topbar .topbar-left .logo .cs-brand {
+    font-size: 16px;
+    white-space: nowrap;
+}
+
+body.cs-admin .topbar .topbar-left .logo .cs-brand-img {
+    height: 38px;
+    max-width: 204px;
+}
+
+body.cs-admin .topbar .topbar-left .logo .cs-brand-mark {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+}
+
+@media (min-width: 992px) {
+    body.cs-admin.enlarged .topbar .topbar-left .logo {
+        padding: 0;
+        justify-content: center;
+    }
+
+    body.cs-admin.enlarged .topbar .topbar-left .logo .logo-text {
+        display: none !important;
+    }
+
+    body.cs-admin.enlarged .topbar .topbar-left .logo .logo-text-mini {
+        display: flex !important;
+    }
+}
+
+@media (max-width: 991.98px) {
+    body.cs-admin .topbar .topbar-left .logo {
+        padding: 0;
+        justify-content: center;
+    }
+
+    body.cs-admin .topbar .topbar-left .logo .logo-text {
+        display: none !important;
+    }
+
+    body.cs-admin .topbar .topbar-left .logo .logo-text-mini {
+        display: flex !important;
+        line-height: 1 !important;
+    }
+}
+
+body.cs-admin .navbar-custom {
+    background: transparent;
+}
+
+body.cs-admin .navbar-custom .nav-link,
+body.cs-admin .navbar-custom .noti-icon,
+body.cs-admin .navbar-custom .button-menu-mobile {
+    color: #637480 !important;
+}
+
+body.cs-admin .navbar-custom .nav-link:hover,
+body.cs-admin .navbar-custom .button-menu-mobile:hover {
+    color: var(--cs-primary) !important;
+}
+
+body.cs-admin .app-search .form-control {
+    background: #fff;
+    border: 1px solid var(--cs-line);
+    border-radius: 9px;
+    height: 38px;
+    min-height: 38px;
+    font-size: 12px;
+}
+
+body.cs-admin .app-search button {
+    color: #7f909c;
+}
+
+/* ---------- Sidebar ---------- */
+body.cs-admin .left.side-menu,
+body.cs-admin .side-menu {
+    background: #fff !important;
+    border-right: 1px solid var(--cs-line);
+    box-shadow: none !important;
+}
+
+body.cs-admin #sidebar-menu {
+    padding: 14px 12px 30px;
+}
+
+body.cs-admin #sidebar-menu .menu-title {
+    padding: 18px 12px 8px;
+    font-size: 9px;
+    letter-spacing: .15em;
+    font-weight: 800;
+    color: #a1aeb7;
+    text-transform: uppercase;
+}
+
+body.cs-admin #sidebar-menu>ul>li>a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    margin: 2px 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #6b7e8c !important;
+    font-size: 13px;
+    font-weight: 600;
+    transition: background .2s, color .2s;
+}
+
+body.cs-admin #sidebar-menu>ul>li>a i {
+    font-size: 17px;
+    width: 20px;
+    margin: 0 !important;
+    text-align: center;
+    color: #8b9ba6;
+}
+
+body.cs-admin #sidebar-menu>ul>li>a:hover,
+body.cs-admin #sidebar-menu>ul>li>a:focus,
+body.cs-admin #sidebar-menu>ul>li>a.active,
+body.cs-admin #sidebar-menu>ul>li>a.mm-active,
+body.cs-admin #sidebar-menu>ul>li.mm-active>a {
+    background: var(--cs-primary-soft) !important;
+    color: #176296 !important;
+}
+
+body.cs-admin #sidebar-menu>ul>li>a:hover i,
+body.cs-admin #sidebar-menu>ul>li>a.active i,
+body.cs-admin #sidebar-menu>ul>li>a.mm-active i,
+body.cs-admin #sidebar-menu>ul>li.mm-active>a i {
+    color: #176296;
+}
+
+body.cs-admin #sidebar-menu>ul>li>a.active::after,
+body.cs-admin #sidebar-menu>ul>li>a.mm-active::after {
+    display: none;
+}
+
+/* Sidebar mode ciut (enlarged) */
+body.cs-admin.enlarged #wrapper .left.side-menu #sidebar-menu>ul>li>a {
+    padding: 12px 14px;
+    min-height: 46px;
+}
+
+body.cs-admin.enlarged #wrapper .left.side-menu #sidebar-menu ul>li:hover>a {
+    background: var(--cs-primary-soft) !important;
+    color: #176296 !important;
+}
+
+body.cs-admin.enlarged #wrapper #sidebar-menu ul ul {
+    background-color: #fff;
+    border: 1px solid var(--cs-line);
+    border-radius: 10px;
+    box-shadow: 0 13px 35px #282f341a;
+}
+
+/* ---------- Konten ---------- */
+body.cs-admin .content-page .container-fluid {
+    padding: 0 4% 40px;
+}
+
+body.cs-admin .page-title-box {
+    padding: 28px 0 18px;
+}
+
+body.cs-admin .page-title-box .page-title {
+    font: 800 clamp(24px, 2.4vw, 32px)/1.15 var(--cs-display);
+    letter-spacing: -1.5px;
+    color: var(--cs-ink);
+    margin: 0 0 6px;
+}
+
+body.cs-admin .page-title-box .breadcrumb {
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    font-size: 12px;
+}
+
+body.cs-admin .breadcrumb-item a {
+    color: var(--cs-soft);
+}
+
+body.cs-admin .breadcrumb-item.active {
+    color: #2a3f55;
+    font-weight: 600;
+}
+
+body.cs-admin .breadcrumb-item+.breadcrumb-item::before {
+    color: #bac3c9;
+}
+
+body.cs-admin .footer {
+    background: transparent;
+    border-top: 1px solid var(--cs-line);
+    color: #8e9da8;
+    font-family: var(--cs-font);
+    font-size: 11px;
+}
+
+/* ---------- Warna utilitas bawaan Veltrix -> Cerah ---------- */
+body.cs-admin .text-primary {
+    color: var(--cs-primary) !important;
+}
+
+body.cs-admin .bg-primary {
+    background-color: var(--cs-primary) !important;
+}
+
+body.cs-admin .border-primary {
+    border-color: var(--cs-primary) !important;
+}
+
+body.cs-admin .text-success {
+    color: var(--cs-green) !important;
+}
+
+body.cs-admin .bg-success {
+    background-color: #8aa83a !important;
+}
+
+body.cs-admin .text-danger {
+    color: var(--cs-rose) !important;
+}
+
+body.cs-admin .bg-danger {
+    background-color: var(--cs-rose) !important;
+}
+
+body.cs-admin .text-warning {
+    color: var(--cs-amber) !important;
+}
+
+body.cs-admin .bg-warning {
+    background-color: #dcb64f !important;
+}
+
+body.cs-admin .text-info {
+    color: #176296 !important;
+}
+
+body.cs-admin .bg-info {
+    background-color: #4f9acb !important;
+}
+
+body.cs-admin .text-muted {
+    color: var(--cs-soft) !important;
+}
+
+/* ---------- Dashboard admin (admin/index) ---------- */
+body.cs-admin .admin-dashboard {
+    font-family: var(--cs-font);
+}
+
+body.cs-admin .dash-hero {
+    background: #e3f2fa;
+    border: 1px solid #e3f2fa;
+    border-radius: 14px;
+    box-shadow: none;
+    color: var(--cs-ink);
+}
+
+body.cs-admin .dash-hero:before {
+    background: radial-gradient(circle at center, #b9def0 0%, rgba(185, 222, 240, 0) 70%);
+    opacity: .9;
+}
+
+body.cs-admin .dash-hero:after {
+    background: radial-gradient(circle at center, #c4f0f2 0%, rgba(196, 240, 242, 0) 72%);
+    opacity: .9;
+}
+
+body.cs-admin .dash-hero h2 {
+    font-family: var(--cs-display);
+    font-weight: 800;
+    letter-spacing: -1.2px;
+    color: var(--cs-ink);
+}
+
+body.cs-admin .dash-hero p {
+    color: #6b7d8c;
+}
+
+body.cs-admin .hero-actions a {
+    border-radius: 8px;
+    border: 1px solid #bcdbec;
+    background: #fff;
+    color: #176296;
+    font-size: 12px;
+}
+
+body.cs-admin .hero-actions a.primary {
+    background: var(--cs-primary);
+    border-color: var(--cs-primary);
+    color: #fff;
+}
+
+body.cs-admin .dashboard-schedule {
+    border-radius: 12px;
+    border: 1px solid #d2e7f2;
+    background: #fff;
+}
+
+body.cs-admin .dashboard-schedule strong {
+    color: #7b8a99;
+}
+
+body.cs-admin .dashboard-schedule span {
+    color: var(--cs-ink);
+    font-family: var(--cs-display);
+}
+
+body.cs-admin .stat-grid .card,
+body.cs-admin .dash-card {
+    border-radius: 12px;
+    border: 1px solid var(--cs-line);
+    box-shadow: none;
+}
+
+body.cs-admin .stat-card .stat-icon {
+    border-radius: 10px;
+}
+
+body.cs-admin .stat-card h4 {
+    font-family: var(--cs-display);
+    font-weight: 800;
+    letter-spacing: -1px;
+}
+
+body.cs-admin .stat-summary {
+    background: #f4f9fc;
+    border: 1px dashed #c5dbe8;
+    border-radius: 10px;
+}
+
+body.cs-admin .dashboard-section-title {
+    font-family: var(--cs-display);
+    font-weight: 800;
+    letter-spacing: -.5px;
+}
+
+/* ---------- Responsif ---------- */
+@media (max-width: 991.98px) {
+    body.cs-admin .left.side-menu {
+        box-shadow: 12px 0 35px #2222 !important;
+    }
+
+    body.cs-admin .content-page .container-fluid {
+        padding: 0 16px 30px;
+    }
+}

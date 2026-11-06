@@ -1,0 +1,1016 @@
+/* ==========================================================================
+   Cerah theme — tampilan seragam untuk Sistem Absensi PLN Suku Cadang.
+   Hanya mengatur tampilan (warna, tipografi, spasi, komponen).
+   Semua selector baru memakai awalan "cs-" agar tidak bentrok dengan
+   tema Bootstrap lama. Override Bootstrap dibatasi pada body.cs-theme.
+   ========================================================================== */
+
+:root {
+    --cs-ink: #0f2a43;
+    --cs-muted: #6d808e;
+    --cs-soft: #7f909c;
+    --cs-paper: #f6fafc;
+    --cs-bg: #eff6fa;
+    --cs-card: #ffffff;
+    --cs-line: #d9e7ef;
+    --cs-line-soft: #e6eff4;
+    --cs-primary: #1b6aa8;
+    --cs-primary-dark: #134f82;
+    --cs-primary-soft: #e4f2fa;
+    --cs-aqua: #a7e8ea;
+    --cs-success-soft: #eaf3d1;
+    --cs-green: #6d8a2a;
+    --cs-green-soft: #edf5d7;
+    --cs-amber: #a37f2b;
+    --cs-amber-soft: #fff4d8;
+    --cs-rose: #c0566f;
+    --cs-rose-soft: #fae8ed;
+    --cs-blue: #577bc6;
+    --cs-blue-soft: #e8efff;
+    --cs-font: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --cs-display: 'Manrope', 'DM Sans', system-ui, sans-serif;
+    --cs-radius: 12px;
+    --cs-sidebar-w: 250px;
+}
+
+/* ---------- Dasar ---------- */
+body.cs-theme {
+    margin: 0;
+    background: var(--cs-bg);
+    color: var(--cs-ink);
+    font-family: var(--cs-font);
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+}
+
+body.cs-theme *,
+body.cs-theme *::before,
+body.cs-theme *::after {
+    box-sizing: border-box;
+}
+
+/* SweetAlert (swal) menggambar ikon centang/silang/peringatan dengan ukuran
+   piksel tetap dan mengandalkan box-sizing bawaan (content-box). Aturan
+   border-box di atas membuat ikon mengecil dan garis centang saling menyilang,
+   jadi dikembalikan khusus untuk ikon. */
+body.cs-theme .swal-icon,
+body.cs-theme .swal-icon::before,
+body.cs-theme .swal-icon::after,
+body.cs-theme .swal-icon *,
+body.cs-theme .swal-icon *::before,
+body.cs-theme .swal-icon *::after {
+    box-sizing: content-box;
+}
+
+body.cs-theme h1,
+body.cs-theme h2,
+body.cs-theme h3,
+body.cs-theme h4,
+body.cs-theme h5,
+body.cs-theme h6 {
+    font-family: var(--cs-display);
+    color: var(--cs-ink);
+}
+
+body.cs-theme a {
+    color: var(--cs-primary);
+}
+
+body.cs-theme a:hover {
+    color: var(--cs-primary-dark);
+    text-decoration: none;
+}
+
+.cs-accent {
+    color: var(--cs-primary);
+}
+
+.cs-eyebrow {
+    font-size: 10px;
+    letter-spacing: .16em;
+    font-weight: 800;
+    color: #7b8a99;
+    margin-bottom: 14px;
+    text-transform: uppercase;
+}
+
+/* ---------- Brand ---------- */
+.cs-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font: 800 18px var(--cs-display);
+    letter-spacing: -.6px;
+    color: var(--cs-ink) !important;
+    text-decoration: none !important;
+}
+
+.cs-brand-mark {
+    display: grid;
+    place-items: center;
+    background: var(--cs-aqua);
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.cs-brand-mark img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+    display: block;
+}
+
+.cs-brand-img {
+    display: block;
+    height: 38px;
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+}
+
+.cs-sidebar .cs-brand-img {
+    height: auto;
+    max-height: 44px;
+    max-width: 100%;
+}
+
+.cs-brand-light {
+    font-weight: 500;
+    color: #80919e;
+}
+
+/* ---------- Tombol ---------- */
+.cs-btn,
+body.cs-theme .btn-primary,
+body.cs-theme .btn-success {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    border: 0;
+    border-radius: 8px;
+    background: var(--cs-primary);
+    color: #fff !important;
+    padding: 11px 16px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+    box-shadow: 0 4px 12px #1b6aa822;
+    transition: transform .2s, background .2s;
+    cursor: pointer;
+    text-decoration: none !important;
+}
+
+.cs-btn:hover,
+body.cs-theme .btn-primary:hover,
+body.cs-theme .btn-success:hover {
+    background: var(--cs-primary-dark);
+    transform: translateY(-1px);
+    color: #fff !important;
+}
+
+.cs-btn-outline,
+body.cs-theme .btn-outline-primary,
+body.cs-theme .btn-secondary,
+body.cs-theme .btn-light,
+body.cs-theme .btn-default {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: #fff;
+    color: #176296 !important;
+    border: 1px solid #bcdbec;
+    border-radius: 8px;
+    padding: 10px 15px;
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: none;
+    cursor: pointer;
+}
+
+.cs-btn-outline:hover,
+body.cs-theme .btn-outline-primary:hover,
+body.cs-theme .btn-secondary:hover,
+body.cs-theme .btn-light:hover,
+body.cs-theme .btn-default:hover {
+    background: #eff8fc;
+    color: #11507d !important;
+}
+
+.cs-btn-dark {
+    background: var(--cs-ink);
+}
+
+.cs-btn-dark:hover {
+    background: #2a3f55;
+}
+
+body.cs-theme .btn-danger,
+body.cs-theme .btn-outline-danger {
+    background: #fff;
+    color: var(--cs-rose) !important;
+    border: 1px solid #f1cfd8;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: none;
+}
+
+body.cs-theme .btn-danger:hover,
+body.cs-theme .btn-outline-danger:hover {
+    background: var(--cs-rose-soft);
+}
+
+body.cs-theme .btn-warning,
+body.cs-theme .btn-info {
+    background: var(--cs-success-soft);
+    color: #55671f !important;
+    border: 1px solid #dfeabb;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: none;
+}
+
+body.cs-theme .btn-sm {
+    padding: 7px 11px;
+    font-size: 11px;
+    border-radius: 7px;
+}
+
+/* ---------- Panel / kartu ---------- */
+.cs-panel,
+body.cs-theme .card {
+    background: var(--cs-card);
+    border: 1px solid var(--cs-line);
+    border-radius: var(--cs-radius);
+    box-shadow: none;
+    min-width: 0;
+}
+
+.cs-panel {
+    padding: 22px;
+}
+
+body.cs-theme .card .card-body {
+    padding: 22px;
+}
+
+body.cs-theme .card .card-header {
+    background: transparent;
+    border-bottom: 1px solid var(--cs-line-soft);
+    font-family: var(--cs-display);
+    font-weight: 800;
+}
+
+.cs-panel-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.cs-panel-heading h2,
+.cs-panel h2 {
+    font: 800 17px var(--cs-display);
+    letter-spacing: -.6px;
+    margin: 0 0 6px;
+}
+
+.cs-panel-heading p,
+.cs-muted {
+    font-size: 12px;
+    color: var(--cs-soft);
+    margin: 0;
+    line-height: 1.7;
+}
+
+/* ---------- Judul halaman ---------- */
+.cs-page-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 26px;
+    flex-wrap: wrap;
+}
+
+.cs-page-heading h1 {
+    font: 800 clamp(28px, 3vw, 40px)/1.15 var(--cs-display);
+    letter-spacing: -2px;
+    margin: 0 0 10px;
+}
+
+.cs-page-heading p {
+    font-size: 13px;
+    line-height: 1.7;
+    color: #758895;
+    margin: 0;
+    max-width: 560px;
+}
+
+.cs-chip {
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--cs-primary-soft);
+    color: #1b6aa8;
+    border-radius: 8px;
+    padding: 10px 13px;
+    white-space: nowrap;
+}
+
+/* ---------- Pill / status ---------- */
+.cs-pill,
+body.cs-theme .badge {
+    display: inline-block;
+    border-radius: 20px;
+    padding: 5px 10px;
+    background: #e6eef4;
+    color: #637480;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .02em;
+}
+
+.cs-pill-good,
+body.cs-theme .badge-success {
+    background: #eaf3d4;
+    color: #6b852b;
+}
+
+.cs-pill-warn,
+body.cs-theme .badge-warning {
+    background: var(--cs-amber-soft);
+    color: var(--cs-amber);
+}
+
+.cs-pill-bad,
+body.cs-theme .badge-danger {
+    background: var(--cs-rose-soft);
+    color: var(--cs-rose);
+}
+
+.cs-pill-info,
+body.cs-theme .badge-info,
+body.cs-theme .badge-primary {
+    background: var(--cs-primary-soft);
+    color: #176296;
+}
+
+body.cs-theme .badge-secondary,
+body.cs-theme .badge-light {
+    background: #e6eef4;
+    color: #637480;
+}
+
+/* ---------- Form ---------- */
+body.cs-theme .form-control,
+body.cs-theme .custom-select,
+body.cs-theme select.form-control,
+.cs-input {
+    display: block;
+    width: 100%;
+    border: 1px solid #d9e7ef;
+    border-radius: 8px;
+    background: #fff;
+    color: var(--cs-ink);
+    font-size: 13px;
+    padding: 10px 12px;
+    height: auto;
+    min-height: 42px;
+    outline: none;
+    box-shadow: none;
+    transition: border .2s, box-shadow .2s;
+}
+
+body.cs-theme .form-control:focus,
+body.cs-theme .custom-select:focus,
+.cs-input:focus {
+    border-color: #6fb0d8;
+    box-shadow: 0 0 0 3px #1b6aa814;
+    background: #fff;
+    color: var(--cs-ink);
+}
+
+body.cs-theme .form-control::placeholder {
+    color: #a9b4bc;
+}
+
+body.cs-theme textarea.form-control {
+    line-height: 1.6;
+}
+
+body.cs-theme label,
+.cs-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--cs-ink);
+}
+
+body.cs-theme input[type=checkbox],
+body.cs-theme input[type=radio] {
+    accent-color: var(--cs-primary);
+}
+
+body.cs-theme .form-control[type=file] {
+    padding: 9px 10px;
+    border-style: dashed;
+    background: #f4f9fc;
+}
+
+body.cs-theme .invalid-feedback,
+body.cs-theme .text-danger {
+    color: var(--cs-rose) !important;
+}
+
+/* ---------- Tabel ---------- */
+body.cs-theme .table {
+    color: var(--cs-ink);
+    font-size: 13px;
+    margin-bottom: 0;
+}
+
+body.cs-theme .table thead th {
+    border-top: 0;
+    border-bottom: 1px solid var(--cs-line);
+    background: #f3f9fc;
+    color: #7f909c;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    padding: 12px 14px;
+    white-space: nowrap;
+}
+
+body.cs-theme .table td {
+    border-top: 1px solid var(--cs-line-soft);
+    padding: 13px 14px;
+    vertical-align: middle;
+}
+
+body.cs-theme .table-striped tbody tr:nth-of-type(odd) {
+    background: #f8fcfe;
+}
+
+body.cs-theme .table-hover tbody tr:hover {
+    background: #f0f8fc;
+}
+
+body.cs-theme .table-bordered,
+body.cs-theme .table-bordered td,
+body.cs-theme .table-bordered th {
+    border-color: var(--cs-line-soft);
+}
+
+body.cs-theme .table-responsive {
+    border-radius: 10px;
+}
+
+/* DataTables */
+body.cs-theme .dataTables_wrapper .dataTables_filter input,
+body.cs-theme .dataTables_wrapper .dataTables_length select {
+    border: 1px solid #d9e7ef;
+    border-radius: 8px;
+    padding: 7px 10px;
+    outline: none;
+    background: #fff;
+}
+
+body.cs-theme .dataTables_wrapper .dataTables_filter input:focus {
+    border-color: #6fb0d8;
+}
+
+body.cs-theme .dataTables_info,
+body.cs-theme .dataTables_length label,
+body.cs-theme .dataTables_filter label {
+    font-size: 12px;
+    color: var(--cs-soft);
+    font-weight: 500;
+}
+
+body.cs-theme .page-item .page-link {
+    border: 1px solid var(--cs-line);
+    color: #176296;
+    border-radius: 8px;
+    margin: 0 2px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+body.cs-theme .page-item.active .page-link {
+    background: var(--cs-primary);
+    border-color: var(--cs-primary);
+    color: #fff;
+}
+
+body.cs-theme .page-item.disabled .page-link {
+    color: #b7bcc0;
+    background: #fff;
+}
+
+/* ---------- Alert & modal ---------- */
+body.cs-theme .alert {
+    border-radius: 10px;
+    border: 1px solid transparent;
+    font-size: 13px;
+}
+
+body.cs-theme .alert-success {
+    background: var(--cs-success-soft);
+    border-color: #dfeabb;
+    color: #55671f;
+}
+
+body.cs-theme .alert-danger {
+    background: var(--cs-rose-soft);
+    border-color: #f1cfd8;
+    color: #9c3e56;
+}
+
+body.cs-theme .alert-warning {
+    background: var(--cs-amber-soft);
+    border-color: #f4e3b5;
+    color: #86671f;
+}
+
+body.cs-theme .alert-info {
+    background: var(--cs-primary-soft);
+    border-color: #c8e1ef;
+    color: #134f82;
+}
+
+body.cs-theme .modal-content {
+    border: 1px solid var(--cs-line);
+    border-radius: 14px;
+    box-shadow: 0 25px 65px #1f3e5526;
+}
+
+body.cs-theme .modal-header {
+    border-bottom: 1px solid var(--cs-line-soft);
+    padding: 18px 22px;
+}
+
+body.cs-theme .modal-title {
+    font: 800 18px var(--cs-display);
+    letter-spacing: -.5px;
+}
+
+body.cs-theme .modal-footer {
+    border-top: 1px solid var(--cs-line-soft);
+}
+
+body.cs-theme .dropdown-menu {
+    border: 1px solid var(--cs-line);
+    border-radius: 10px;
+    box-shadow: 0 13px 35px #282f341a;
+    padding: 6px;
+}
+
+body.cs-theme .dropdown-item {
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 8px 10px;
+}
+
+body.cs-theme .dropdown-item:hover {
+    background: var(--cs-primary-soft);
+    color: #176296;
+}
+
+/* ---------- Statistik ---------- */
+.cs-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 13px;
+    margin-bottom: 22px;
+}
+
+.cs-stat {
+    padding: 18px;
+    background: #fff;
+    border: 1px solid var(--cs-line);
+    border-radius: 11px;
+    min-width: 0;
+}
+
+.cs-stat-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: #6d808e;
+    gap: 6px;
+}
+
+.cs-stat-icon {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    font-size: 16px;
+    background: var(--cs-primary-soft);
+    color: #1b6aa8;
+}
+
+.cs-stat-icon.is-yellow {
+    background: #f7f1d9;
+    color: #b39a35;
+}
+
+.cs-stat-icon.is-green {
+    background: var(--cs-green-soft);
+    color: #78932f;
+}
+
+.cs-stat-icon.is-pink {
+    background: var(--cs-rose-soft);
+    color: #c16c86;
+}
+
+.cs-stat strong {
+    display: block;
+    font: 800 28px var(--cs-display);
+    letter-spacing: -1px;
+    margin: 14px 0 6px;
+}
+
+.cs-stat small {
+    font-size: 11px;
+    color: #8797a3;
+}
+
+/* ==========================================================================
+   Portal peserta: sidebar + topbar
+   ========================================================================== */
+body.cs-portal {
+    padding-left: var(--cs-sidebar-w);
+    min-height: 100vh;
+    overflow-x: clip;
+}
+
+body.cs-theme:has(> .cs-sidebar) {
+    padding-left: var(--cs-sidebar-w);
+    min-height: 100vh;
+}
+
+.cs-sidebar {
+    width: var(--cs-sidebar-w);
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    background: #fff;
+    border-right: 1px solid var(--cs-line);
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    z-index: 220;
+    overflow-y: auto;
+}
+
+.cs-sidebar .cs-brand {
+    padding: 0 8px 24px;
+}
+
+.cs-profile-mini {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 15px 8px;
+    border-top: 1px solid var(--cs-line-soft);
+    border-bottom: 1px solid var(--cs-line-soft);
+    margin-bottom: 22px;
+}
+
+.cs-avatar {
+    display: grid;
+    place-items: center;
+    background: #d3e8f4;
+    color: #176296;
+    border-radius: 11px;
+    font-weight: 800;
+    width: 38px;
+    height: 38px;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.cs-profile-mini strong,
+.cs-profile-mini small {
+    display: block;
+}
+
+.cs-profile-mini strong {
+    font-size: 12px;
+    line-height: 1.3;
+}
+
+.cs-profile-mini small {
+    font-size: 10px;
+    color: #7d8e9b;
+    margin-top: 3px;
+}
+
+.cs-nav-label {
+    padding: 0 10px 9px;
+    font-size: 9px;
+    letter-spacing: .15em;
+    font-weight: 800;
+    color: #a1aeb7;
+    text-transform: uppercase;
+}
+
+.cs-nav-label.is-spaced {
+    margin-top: 20px;
+}
+
+.cs-side-link,
+.cs-side-toggle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 12px;
+    background: transparent;
+    color: #6b7e8c !important;
+    border: 0;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    margin: 2px 0;
+    transition: .2s;
+    text-align: left;
+    cursor: pointer;
+    text-decoration: none !important;
+}
+
+.cs-side-link i,
+.cs-side-toggle i.cs-ic {
+    font-size: 18px;
+    width: 20px;
+    text-align: center;
+    color: #8b9ba6;
+}
+
+.cs-side-link.active,
+.cs-side-link:hover,
+.cs-side-toggle.active,
+.cs-side-toggle:hover {
+    background: var(--cs-primary-soft);
+    color: #176296 !important;
+}
+
+.cs-side-link.active i,
+.cs-side-link:hover i,
+.cs-side-toggle.active i.cs-ic,
+.cs-side-toggle:hover i.cs-ic {
+    color: #176296;
+}
+
+.cs-side-caret {
+    margin-left: auto;
+    font-size: 10px;
+    color: #a1aeb7;
+    transition: transform .2s;
+}
+
+.cs-side-group.is-open .cs-side-caret,
+.cs-side-group.has-active .cs-side-caret {
+    transform: rotate(180deg);
+}
+
+.cs-side-sub {
+    display: none;
+    margin: 2px 0 6px 20px;
+    padding-left: 12px;
+    border-left: 1px solid var(--cs-line);
+}
+
+.cs-side-group.is-open .cs-side-sub,
+.cs-side-group.has-active .cs-side-sub {
+    display: block;
+}
+
+.cs-side-sub a {
+    display: block;
+    padding: 8px 10px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #798b97 !important;
+    text-decoration: none !important;
+}
+
+.cs-side-sub a.active,
+.cs-side-sub a:hover {
+    background: var(--cs-primary-soft);
+    color: #176296 !important;
+}
+
+.cs-sidebar-bottom {
+    margin-top: auto;
+    padding-top: 18px;
+}
+
+.cs-logout {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: #f1f7fa;
+    border: 1px solid var(--cs-line);
+    border-radius: 9px;
+    padding: 11px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #637480;
+    cursor: pointer;
+}
+
+.cs-logout:hover {
+    background: var(--cs-rose-soft);
+    color: var(--cs-rose);
+    border-color: #f1cfd8;
+}
+
+.cs-topbar {
+    height: 68px;
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: #f6fafcef;
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--cs-line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4.5%;
+}
+
+.cs-crumb {
+    font-size: 12px;
+    color: #7e8f9c;
+}
+
+.cs-crumb span {
+    margin: 0 8px;
+    color: #bac3c9;
+}
+
+.cs-crumb strong {
+    color: #2a3f55;
+}
+
+.cs-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.cs-date {
+    font-size: 11px;
+    color: #788a97;
+}
+
+/* Avatar akun di pojok kanan topbar: bulat, membuka menu Profil / Keluar. */
+.cs-avatar-toggle {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #d3e8f4;
+    color: #176296;
+    font-size: 11px;
+    font-weight: 800;
+    text-decoration: none;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: box-shadow .15s;
+}
+
+.cs-avatar-toggle:hover,
+.cs-avatar-toggle:focus,
+.cs-user-menu.show .cs-avatar-toggle {
+    color: #176296;
+    text-decoration: none;
+    outline: 0;
+    box-shadow: 0 0 0 3px #d3e8f4;
+}
+
+.cs-avatar-toggle img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
+}
+
+.cs-user-menu .dropdown-menu {
+    margin-top: 8px;
+}
+
+body.cs-theme .cs-user-menu .dropdown-item.active {
+    background: var(--cs-primary-soft);
+    color: #176296;
+}
+
+body.cs-theme .cs-user-menu .dropdown-item.text-danger:hover {
+    background: var(--cs-rose-soft);
+    color: var(--cs-rose) !important;
+}
+
+.cs-menu-btn {
+    display: none;
+    background: none;
+    border: 0;
+    font-size: 22px;
+    color: var(--cs-ink);
+    padding: 0 10px 0 0;
+}
+
+.cs-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 42, 67, .35);
+    z-index: 210;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .2s, visibility .2s;
+}
+
+body.cs-portal.cs-open .cs-overlay {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Wadah isi halaman portal */
+.cs-content {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 34px 4.5% 70px;
+}
+
+@media (max-width: 991.98px) {
+    body.cs-portal {
+        padding-left: 0;
+    }
+
+    body.cs-theme:has(> .cs-sidebar) {
+        padding-left: 0;
+    }
+
+    .cs-sidebar {
+        transform: translateX(-100%);
+        transition: transform .25s;
+        box-shadow: 12px 0 35px #2222;
+    }
+
+    body.cs-portal.cs-open .cs-sidebar {
+        transform: translateX(0);
+    }
+
+    .cs-menu-btn {
+        display: block;
+    }
+
+    .cs-date {
+        display: none;
+    }
+
+    .cs-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .cs-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .cs-content {
+        padding: 26px 5% 50px;
+    }
+
+    .cs-panel {
+        padding: 17px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.cs-theme * {
+        transition: none !important;
+    }
+}

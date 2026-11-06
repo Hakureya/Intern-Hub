@@ -1,0 +1,1602 @@
+/* ==========================================================================
+   Cerah theme — halaman publik pendaftaran magang (resources/views/magang/*).
+   Dipakai bersama Tailwind CDN yang palet warnanya sudah diselaraskan di
+   layout magang/layout/app.blade.php.
+   ========================================================================== */
+
+html {
+    scroll-behavior: smooth;
+}
+
+body.cs-pub {
+    margin: 0;
+    background: var(--cs-paper);
+    color: var(--cs-ink);
+    font-family: var(--cs-font);
+    -webkit-font-smoothing: antialiased;
+}
+
+body.cs-pub h1,
+body.cs-pub h2,
+body.cs-pub h3 {
+    font-family: var(--cs-display);
+}
+
+/* ---------- Header ---------- */
+.cs-pub-header {
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: rgba(246, 250, 252, .95);
+    border-bottom: 1px solid rgba(30, 30, 30, .06);
+    backdrop-filter: blur(14px);
+}
+
+.cs-pub-header-inner {
+    height: 76px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 7.2%;
+    gap: 20px;
+}
+
+.cs-pub-header .cs-brand-img {
+    height: 40px;
+    max-width: 240px;
+}
+
+.cs-pub-nav {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.cs-pub-nav>a:not(.cs-btn) {
+    color: #55646e;
+    text-decoration: none;
+    transition: color .2s;
+}
+
+.cs-pub-nav>a:not(.cs-btn):hover {
+    color: var(--cs-primary);
+}
+
+.cs-pub-toggle {
+    display: none;
+    border: 0;
+    background: none;
+    font-size: 22px;
+    color: var(--cs-ink);
+    padding: 6px;
+}
+
+.cs-pub-mobile {
+    display: none;
+    border-top: 1px solid var(--cs-line);
+    background: var(--cs-paper);
+    padding: 16px 6%;
+}
+
+.cs-pub-mobile.is-open {
+    display: block;
+}
+
+.cs-pub-mobile a {
+    display: block;
+    padding: 12px 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--cs-ink);
+    text-decoration: none;
+    border-bottom: 1px solid var(--cs-line-soft);
+}
+
+.cs-pub-mobile a:last-child {
+    border-bottom: 0;
+}
+
+@media (max-width: 760px) {
+    .cs-pub-header .cs-brand-img {
+        height: 34px;
+        max-width: 190px;
+    }
+
+    .cs-pub-nav {
+        display: none;
+    }
+
+    .cs-pub-toggle {
+        display: block;
+    }
+
+    .cs-pub-header-inner {
+        height: 66px;
+    }
+}
+
+/* ---------- Footer ---------- */
+.cs-pub-footer {
+    border-top: 1px solid var(--cs-line);
+    padding: 26px 8%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    background: var(--cs-paper);
+}
+
+.cs-pub-footer p {
+    font-size: 11px;
+    color: #7e8f9b;
+    margin: 0;
+}
+
+.cs-pub-footer .cs-brand {
+    font-size: 15px;
+}
+
+.cs-pub-footer .cs-brand-mark {
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+}
+
+/* ---------- Notifikasi ---------- */
+.cs-pub-alert {
+    max-width: 880px;
+    margin: 22px auto 0;
+    padding: 0 16px;
+}
+
+.cs-pub-alert>div {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 13px;
+    border: 1px solid transparent;
+}
+
+.cs-pub-alert strong {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 2px;
+}
+
+.cs-pub-alert.is-success>div {
+    background: var(--cs-success-soft);
+    border-color: #dfeabb;
+    color: #55671f;
+}
+
+.cs-pub-alert.is-error>div {
+    background: var(--cs-rose-soft);
+    border-color: #f1cfd8;
+    color: #8d3a50;
+}
+
+.cs-pub-alert .cs-pub-alert-icon {
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+/* ---------- Hero ---------- */
+.cs-hero {
+    padding: 72px 8% 74px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5%;
+    min-height: 600px;
+    align-items: center;
+    overflow: hidden;
+}
+
+.cs-hero-copy {
+    max-width: 560px;
+}
+
+.cs-hero .cs-eyebrow {
+    color: #6f8190;
+}
+
+.cs-eyebrow-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    background: #2aa9b5;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+.cs-hero h1 {
+    font: 800 clamp(38px, 5vw, 64px)/1.08 var(--cs-display);
+    letter-spacing: -3.2px;
+    margin: 0 0 22px;
+}
+
+.cs-hero h1 .is-muted {
+    color: #81929e;
+}
+
+.cs-hero-desc {
+    font-size: 16px;
+    line-height: 1.8;
+    color: #687a87;
+    max-width: 450px;
+    margin: 0;
+}
+
+.cs-hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 30px;
+    flex-wrap: wrap;
+}
+
+.cs-hero-actions .cs-btn {
+    padding: 15px 22px;
+    font-size: 13px;
+}
+
+.cs-hero-art {
+    position: relative;
+    min-height: 470px;
+    display: grid;
+    place-items: center;
+}
+
+.cs-art-grid {
+    position: absolute;
+    inset: 4% 0;
+    background-image: radial-gradient(#d3dfe8 1px, transparent 1px);
+    background-size: 19px 19px;
+    opacity: .7;
+}
+
+.cs-orb {
+    position: absolute;
+    border-radius: 50%;
+}
+
+.cs-orb.is-one {
+    width: 250px;
+    height: 250px;
+    background: #b9def0;
+    right: 1%;
+    top: 8%;
+    opacity: .65;
+}
+
+.cs-orb.is-two {
+    width: 170px;
+    height: 170px;
+    background: #c4f0f2;
+    left: 2%;
+    bottom: 2%;
+    opacity: .8;
+}
+
+.cs-float-card {
+    position: absolute;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 13px 15px;
+    background: #fff;
+    border: 1px solid #edf1f4;
+    border-radius: 12px;
+    box-shadow: 0 13px 35px #282f3412;
+}
+
+.cs-float-card strong,
+.cs-float-card small {
+    display: block;
+}
+
+.cs-float-card strong {
+    font-size: 11px;
+}
+
+.cs-float-card small {
+    font-size: 9px;
+    color: #888;
+    margin-top: 4px;
+}
+
+.cs-float-card.is-top {
+    top: 14%;
+    left: -3%;
+}
+
+.cs-float-card.is-bottom {
+    bottom: 13%;
+    right: -3%;
+}
+
+.cs-mini-icon {
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    font-size: 16px;
+    background: #d9ecf6;
+    color: #1b6aa8;
+}
+
+.cs-mini-icon.is-aqua {
+    background: #e0f6f7;
+    color: #177a86;
+}
+
+/* ---------- Seksi ---------- */
+.cs-section {
+    padding: 90px 8%;
+}
+
+.cs-section.is-alt {
+    background: #e4eff5;
+}
+
+.cs-section-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 30px;
+    margin-bottom: 38px;
+    flex-wrap: wrap;
+}
+
+.cs-section-heading h2 {
+    font: 800 clamp(30px, 4vw, 46px)/1.15 var(--cs-display);
+    letter-spacing: -2px;
+    margin: 0;
+}
+
+.cs-section-heading>p {
+    max-width: 320px;
+    color: #6d808e;
+    line-height: 1.8;
+    font-size: 13px;
+    margin: 0 0 5px;
+}
+
+.cs-program-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 17px;
+}
+
+.cs-program-card {
+    border-radius: 14px;
+    padding: 24px;
+    min-height: 250px;
+    transition: transform .25s;
+}
+
+.cs-program-card:hover {
+    transform: translateY(-5px);
+}
+
+.cs-program-card.is-sky {
+    background: #e2f1f9;
+}
+
+.cs-program-card.is-ice {
+    background: #d9eaf6;
+}
+
+.cs-program-card.is-aqua {
+    background: #dff3f5;
+}
+
+.cs-program-top {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    letter-spacing: .1em;
+    font-weight: 800;
+    color: #687178;
+    text-transform: uppercase;
+}
+
+.cs-program-img {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    margin: 18px 0 16px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, .5);
+}
+
+.cs-program-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.cs-program-card h3 {
+    font: 800 20px var(--cs-display);
+    letter-spacing: -.7px;
+    margin: 0 0 9px;
+}
+
+.cs-program-card p {
+    font-size: 13px;
+    line-height: 1.7;
+    color: #647582;
+    max-width: 300px;
+    margin: 0;
+}
+
+.cs-steps {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 28px;
+}
+
+.cs-step {
+    border-top: 1px solid #c9dbe6;
+    padding-top: 17px;
+}
+
+.cs-step>span {
+    font-size: 11px;
+    color: #76b2dc;
+    font-weight: 800;
+}
+
+.cs-step h3 {
+    font: 800 17px var(--cs-display);
+    margin: 18px 0 8px;
+    letter-spacing: -.5px;
+}
+
+.cs-step p {
+    font-size: 13px;
+    line-height: 1.7;
+    color: #6d808e;
+    margin: 0;
+}
+
+.cs-cta-band {
+    margin: 0 8% 80px;
+    background: var(--cs-aqua);
+    border-radius: 15px;
+    padding: 44px 5%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    position: relative;
+    overflow: hidden;
+    flex-wrap: wrap;
+}
+
+.cs-cta-band .cs-eyebrow {
+    color: #0d5c6b;
+    margin-bottom: 12px;
+}
+
+.cs-cta-band h2 {
+    font: 800 clamp(26px, 3vw, 38px)/1.15 var(--cs-display);
+    letter-spacing: -1.7px;
+    margin: 0;
+    position: relative;
+    z-index: 2;
+}
+
+.cs-cta-band .cs-btn {
+    position: relative;
+    z-index: 2;
+    padding: 15px 22px;
+}
+
+.cs-cta-star {
+    position: absolute;
+    right: 28%;
+    top: -30px;
+    font-size: 150px;
+    color: #8fdde0;
+    opacity: .65;
+    pointer-events: none;
+}
+
+/* ---------- Modal cek status ---------- */
+.cs-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(15, 42, 67, .4);
+    backdrop-filter: blur(6px);
+}
+
+.cs-modal.is-open {
+    display: flex;
+}
+
+.cs-modal-card {
+    width: 100%;
+    max-width: 460px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 25px 65px #1f3e5530;
+    overflow: hidden;
+}
+
+.cs-modal-head {
+    position: relative;
+    padding: 26px 26px 22px;
+    background: #e3f2fa;
+}
+
+.cs-modal-head h3 {
+    font: 800 22px var(--cs-display);
+    letter-spacing: -1px;
+    margin: 0 0 6px;
+}
+
+.cs-modal-head p {
+    margin: 0;
+    font-size: 13px;
+    color: #6b7d8c;
+    line-height: 1.6;
+}
+
+.cs-modal-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    border: 0;
+    background: #fff;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    font-size: 16px;
+    color: #777;
+    cursor: pointer;
+}
+
+.cs-modal-body {
+    padding: 24px 26px 28px;
+}
+
+.cs-modal-body label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.cs-modal-body input[type=email] {
+    display: block;
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #d9e7ef;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    margin-bottom: 18px;
+}
+
+.cs-modal-body input[type=email]:focus {
+    border-color: #6fb0d8;
+    box-shadow: 0 0 0 3px #1b6aa814;
+}
+
+.cs-modal-body .cs-btn {
+    width: 100%;
+    padding: 14px;
+}
+
+@keyframes csFadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(24px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in-up {
+    animation: csFadeUp .7s ease-out forwards;
+    opacity: 0;
+}
+
+/* ---------- Responsif ---------- */
+@media (max-width: 900px) {
+    .cs-hero {
+        padding-left: 6%;
+        padding-right: 6%;
+        gap: 2%;
+    }
+
+    .cs-section {
+        padding-left: 6%;
+        padding-right: 6%;
+    }
+}
+
+@media (max-width: 760px) {
+    .cs-hero {
+        grid-template-columns: 1fr;
+        padding: 48px 7% 30px;
+        min-height: 0;
+    }
+
+    .cs-hero h1 {
+        letter-spacing: -2.4px;
+    }
+
+    .cs-hero-desc {
+        font-size: 14px;
+    }
+
+    .cs-hero-art {
+        min-height: 390px;
+        margin-top: 12px;
+    }
+
+    .cs-float-card.is-top {
+        left: 0;
+        top: 12%;
+    }
+
+    .cs-float-card.is-bottom {
+        right: 0;
+        bottom: 10%;
+    }
+
+    .cs-section {
+        padding: 64px 7%;
+    }
+
+    .cs-section-heading {
+        display: block;
+    }
+
+    .cs-section-heading>p {
+        margin-top: 16px;
+    }
+
+    .cs-program-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .cs-steps {
+        grid-template-columns: 1fr 1fr;
+        gap: 26px 18px;
+    }
+
+    .cs-cta-band {
+        margin: 0 7% 60px;
+        padding: 30px 25px;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .cs-cta-star {
+        right: 2%;
+        top: 0;
+        font-size: 100px;
+    }
+
+    .cs-pub-footer {
+        padding: 22px 7%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation: none !important;
+        transition: none !important;
+        scroll-behavior: auto !important;
+    }
+
+    .animate-fade-in-up {
+        opacity: 1;
+    }
+}
+
+/* ==========================================================================
+   Tambahan: Tentang Kami, Portal Peserta (teaser), FAQ, dan halaman
+   Portal Peserta (status pendaftaran).
+   ========================================================================== */
+
+.cs-section[id],
+section[id] {
+    scroll-margin-top: 84px;
+}
+
+/* ---------- Tentang Kami (slider) ---------- */
+.cs-why {
+    display: block;
+    position: relative;
+    background: #e4eff5;
+}
+
+.cs-arrow {
+    position: absolute;
+    top: 50%;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: #ffffffe6;
+    color: var(--cs-primary);
+    box-shadow: 0 6px 20px #1f3e5533;
+    cursor: pointer;
+    transform: translateY(-50%);
+    transition: background .2s, color .2s, transform .2s;
+}
+
+.cs-arrow:hover,
+.cs-arrow:focus-visible {
+    background: var(--cs-primary);
+    color: #fff;
+    transform: translateY(-50%) scale(1.08);
+}
+
+.cs-arrow-prev {
+    left: 14px;
+}
+
+.cs-arrow-next {
+    right: 14px;
+}
+
+@media (max-width: 760px) {
+    .cs-arrow {
+        top: auto;
+        bottom: 14px;
+        width: 38px;
+        height: 38px;
+        transform: none;
+    }
+
+    .cs-arrow:hover,
+    .cs-arrow:focus-visible {
+        transform: scale(1.08);
+    }
+}
+
+.cs-slides {
+    display: grid;
+}
+
+.cs-slide {
+    grid-area: 1 / 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 9%;
+    align-items: center;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px);
+    transition: opacity .6s ease, transform .6s ease, visibility 0s linear .6s;
+}
+
+.cs-slide.is-active {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    transition: opacity .6s ease, transform .6s ease, visibility 0s;
+}
+
+.cs-why-visual {
+    min-height: 440px;
+    position: relative;
+    background: #bcdcee;
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.cs-why-visual>img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.cs-photo-card {
+    position: absolute;
+    left: 5%;
+    right: 5%;
+    bottom: 5%;
+    z-index: 2;
+    background: rgba(255, 253, 247, .96);
+    border-radius: 12px;
+    padding: 20px 22px;
+    box-shadow: 0 16px 35px #314c602e;
+}
+
+.cs-photo-card span,
+.cs-photo-card strong,
+.cs-photo-card small {
+    display: block;
+}
+
+.cs-photo-card span {
+    font-size: 9px;
+    letter-spacing: .15em;
+    color: #778996;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.cs-photo-card strong {
+    font: 700 16px/1.45 var(--cs-display);
+    letter-spacing: -.4px;
+    margin: 10px 0 8px;
+}
+
+.cs-photo-card small {
+    font-size: 11px;
+    color: #777;
+    line-height: 1.6;
+}
+
+.cs-photo-card.is-quote strong {
+    font-weight: 600;
+    font-style: italic;
+}
+
+.cs-quote-mark {
+    font: 800 34px/0.6 Georgia, serif;
+    color: #5a9cc8;
+    display: block;
+    margin-bottom: 6px;
+}
+
+.cs-why-copy h2 {
+    font: 800 clamp(30px, 4vw, 44px)/1.15 var(--cs-display);
+    letter-spacing: -2px;
+    margin: 0 0 20px;
+}
+
+.cs-why-copy>p {
+    font-size: 14px;
+    line-height: 1.85;
+    color: #647582;
+    margin: 0 0 12px;
+    max-width: 560px;
+}
+
+.cs-person {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 22px;
+}
+
+.cs-person .cs-avatar {
+    width: 42px;
+    height: 42px;
+    font-size: 13px;
+}
+
+.cs-person strong,
+.cs-person small {
+    display: block;
+}
+
+.cs-person strong {
+    font-size: 13px;
+}
+
+.cs-person small {
+    font-size: 11px;
+    color: #798b97;
+    margin-top: 3px;
+}
+
+.cs-benefit {
+    display: flex;
+    gap: 17px;
+    margin-top: 20px;
+}
+
+.cs-benefit>span {
+    font-size: 11px;
+    font-weight: 800;
+    color: #4f93c4;
+    padding-top: 3px;
+}
+
+.cs-benefit strong {
+    font-size: 14px;
+}
+
+.cs-benefit p {
+    font-size: 13px;
+    color: #6d808e;
+    line-height: 1.7;
+    margin: 6px 0 0;
+}
+
+.cs-slider-dots {
+    display: flex;
+    gap: 8px;
+    margin-top: 28px;
+}
+
+.cs-dot {
+    width: 9px;
+    height: 9px;
+    padding: 0;
+    border: 0;
+    border-radius: 9px;
+    background: #bfd6e5;
+    cursor: pointer;
+    transition: width .3s, background .3s;
+}
+
+.cs-dot.is-active {
+    width: 28px;
+    background: var(--cs-primary);
+}
+
+/* Foto hero */
+.cs-hero-photo {
+    position: relative;
+    z-index: 2;
+    width: min(340px, 74%);
+    aspect-ratio: 4 / 5;
+    background: #dceefb;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 25px 65px #1f3e5526;
+    transform: rotate(-3deg);
+}
+
+.cs-hero-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* ---------- Portal Peserta (teaser di landing) ---------- */
+.cs-portal-band {
+    margin: 0 8%;
+    background: #fff;
+    border: 1px solid var(--cs-line);
+    border-radius: 15px;
+    padding: 40px 5%;
+    display: grid;
+    grid-template-columns: 1fr 1.1fr;
+    gap: 6%;
+    align-items: center;
+}
+
+.cs-portal-band h2 {
+    font: 800 clamp(28px, 3.4vw, 40px)/1.15 var(--cs-display);
+    letter-spacing: -1.8px;
+    margin: 0 0 14px;
+}
+
+.cs-portal-band p {
+    font-size: 14px;
+    line-height: 1.8;
+    color: #6d808e;
+    margin: 0 0 22px;
+    max-width: 440px;
+}
+
+.cs-portal-points {
+    display: grid;
+    gap: 12px;
+}
+
+.cs-portal-point {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 15px 16px;
+    background: #f0f8fc;
+    border-radius: 11px;
+}
+
+.cs-portal-point:nth-child(2) {
+    background: #f4f9e4;
+}
+
+.cs-portal-point:nth-child(3) {
+    background: #e9f4fb;
+}
+
+.cs-portal-point>span {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: #fff;
+    font-size: 17px;
+    flex-shrink: 0;
+}
+
+.cs-portal-point strong,
+.cs-portal-point small {
+    display: block;
+}
+
+.cs-portal-point strong {
+    font-size: 13px;
+}
+
+.cs-portal-point small {
+    font-size: 12px;
+    color: #798b97;
+    margin-top: 3px;
+    line-height: 1.5;
+}
+
+/* ---------- FAQ ---------- */
+.cs-faq {
+    padding-top: 90px;
+    display: grid;
+    grid-template-columns: .7fr 1.3fr;
+    gap: 8%;
+}
+
+.cs-faq h2 {
+    font: 800 clamp(30px, 4vw, 44px)/1.15 var(--cs-display);
+    letter-spacing: -2px;
+    margin: 0 0 16px;
+}
+
+.cs-faq-contact {
+    font-size: 13px;
+    line-height: 1.8;
+    color: #6d808e;
+    max-width: 280px;
+}
+
+.cs-faq-contact a {
+    color: var(--cs-primary);
+    font-weight: 700;
+    word-break: break-all;
+}
+
+.cs-faq-list details {
+    border-bottom: 1px solid var(--cs-line);
+    padding: 18px 0;
+}
+
+.cs-faq-list details:first-child {
+    border-top: 1px solid var(--cs-line);
+}
+
+.cs-faq-list summary {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 700;
+    list-style: none;
+}
+
+.cs-faq-list summary::-webkit-details-marker {
+    display: none;
+}
+
+.cs-faq-list summary span {
+    font-size: 20px;
+    line-height: 1;
+    color: #5a9cc8;
+    transition: transform .2s;
+}
+
+.cs-faq-list details[open] summary span {
+    transform: rotate(45deg);
+}
+
+.cs-faq-list details p {
+    font-size: 13px;
+    color: #6d808e;
+    line-height: 1.85;
+    max-width: 620px;
+    margin: 12px 0 0;
+}
+
+.cs-faq-list details p+p {
+    margin-top: 8px;
+}
+
+/* ---------- Halaman Portal Peserta (status pendaftaran) ---------- */
+.cs-dash {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 56px 28px 90px;
+    width: 100%;
+}
+
+.cs-dash-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.cs-dash-head h1 {
+    font: 800 clamp(32px, 4.4vw, 46px)/1.1 var(--cs-display);
+    letter-spacing: -2.4px;
+    margin: 0 0 10px;
+}
+
+.cs-dash-head p {
+    font-size: 13px;
+    color: #6d808e;
+    margin: 0;
+}
+
+.cs-dash-avatar {
+    width: 54px;
+    height: 54px;
+    display: grid;
+    place-items: center;
+    border-radius: 17px;
+    background: var(--cs-aqua);
+    font: 800 17px var(--cs-display);
+}
+
+.cs-dash-grid {
+    display: grid;
+    grid-template-columns: 1.4fr .8fr;
+    gap: 20px;
+    align-items: start;
+}
+
+.cs-card {
+    background: #fff;
+    border: 1px solid #dce9f0;
+    border-radius: 12px;
+    padding: 25px;
+    min-width: 0;
+}
+
+.cs-card.is-sky {
+    background: #e3f2fa;
+    border-color: #e3f2fa;
+}
+
+.cs-card+.cs-card {
+    margin-top: 20px;
+}
+
+.cs-card h2 {
+    font: 800 24px/1.2 var(--cs-display);
+    letter-spacing: -1px;
+    margin: 14px 0 8px;
+}
+
+.cs-card h3 {
+    font: 800 15px var(--cs-display);
+    letter-spacing: -.4px;
+    margin: 0;
+}
+
+.cs-card>p,
+.cs-card-lead {
+    font-size: 13px;
+    line-height: 1.8;
+    color: #6b7d8c;
+    margin: 0;
+}
+
+.cs-status-pill {
+    display: inline-block;
+    padding: 7px 11px;
+    border-radius: 20px;
+    background: #d2e7f2;
+    color: #176296;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.cs-status-pill.is-good {
+    background: var(--cs-aqua);
+    color: #0d4a57;
+}
+
+.cs-status-pill.is-warn {
+    background: var(--cs-amber-soft);
+    color: var(--cs-amber);
+}
+
+.cs-status-pill.is-bad {
+    background: var(--cs-rose-soft);
+    color: var(--cs-rose);
+}
+
+.cs-journey {
+    margin-top: 26px;
+}
+
+.cs-journey-step {
+    display: grid;
+    grid-template-columns: 34px 1fr auto;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 0;
+    border-top: 1px solid #d6e5f0;
+}
+
+.cs-journey-step>span {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: #fff;
+    color: #4f93c4;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.cs-journey-step.is-done>span {
+    background: var(--cs-aqua);
+    color: #0d4a57;
+}
+
+.cs-journey-step.is-current>span {
+    background: var(--cs-primary);
+    color: #fff;
+}
+
+.cs-journey-step.is-upcoming {
+    opacity: .55;
+}
+
+.cs-journey-step strong,
+.cs-journey-step small {
+    display: block;
+}
+
+.cs-journey-step strong {
+    font-size: 13px;
+}
+
+.cs-journey-step small {
+    font-size: 11px;
+    color: #798b97;
+    margin-top: 4px;
+}
+
+.cs-journey-step em {
+    font-size: 11px;
+    font-style: normal;
+    color: #798b97;
+}
+
+.cs-line {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    border-top: 1px solid #e3edf3;
+    padding: 13px 0 0;
+    margin-top: 13px;
+}
+
+.cs-line span {
+    font-size: 11px;
+    color: #7f909c;
+}
+
+.cs-line strong {
+    font-size: 12px;
+    text-align: right;
+    max-width: 62%;
+    overflow-wrap: anywhere;
+}
+
+.cs-card h3+.cs-line {
+    margin-top: 16px;
+}
+
+.cs-files {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 16px;
+}
+
+.cs-files span {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 6px 9px;
+    border-radius: 20px;
+    background: var(--cs-success-soft);
+    color: #55671f;
+}
+
+.cs-notice {
+    border-radius: 12px;
+    padding: 20px 22px;
+    margin-bottom: 20px;
+    border: 1px solid transparent;
+}
+
+.cs-notice h3 {
+    font: 800 15px var(--cs-display);
+    margin: 0 0 6px;
+}
+
+.cs-notice p {
+    font-size: 13px;
+    line-height: 1.7;
+    margin: 0;
+}
+
+.cs-notice.is-info {
+    background: #e3f2fa;
+    border-color: #c8e1ef;
+    color: #134f82;
+}
+
+.cs-notice.is-success {
+    background: var(--cs-success-soft);
+    border-color: #dfeabb;
+    color: #44541b;
+}
+
+.cs-notice-box {
+    background: #fff;
+    border-radius: 9px;
+    padding: 14px 16px;
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    color: var(--cs-ink);
+}
+
+.cs-notice-box small {
+    display: block;
+    font-size: 10px;
+    letter-spacing: .08em;
+    font-weight: 800;
+    color: #8f9ea8;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+.cs-notice-box strong {
+    font-size: 14px;
+    overflow-wrap: anywhere;
+}
+
+.cs-dash-empty {
+    text-align: center;
+    max-width: 520px;
+    margin: 0 auto;
+}
+
+.cs-dash-empty .cs-empty-icon {
+    width: 54px;
+    height: 54px;
+    margin: 0 auto 18px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: #edf5d6;
+    color: #688626;
+    font-size: 24px;
+}
+
+.cs-dash-empty h1 {
+    font: 800 32px/1.15 var(--cs-display);
+    letter-spacing: -1.6px;
+    margin: 10px 0 12px;
+}
+
+.cs-dash-empty p {
+    font-size: 13px;
+    line-height: 1.8;
+    color: #6d808e;
+    margin: 0 0 22px;
+}
+
+.cs-back {
+    display: inline-block;
+    margin-top: 28px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #6d808e;
+}
+
+.cs-back:hover {
+    color: var(--cs-primary);
+}
+
+@media (max-width: 900px) {
+
+    .cs-slide,
+    .cs-faq,
+    .cs-portal-band {
+        grid-template-columns: 1fr;
+        gap: 28px;
+    }
+
+    .cs-dash-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .cs-portal-band {
+        margin: 0 6%;
+    }
+}
+
+@media (max-width: 760px) {
+    .cs-why-visual {
+        min-height: 360px;
+    }
+
+    .cs-hero-photo {
+        width: 250px;
+    }
+
+    .cs-faq {
+        padding-top: 60px;
+    }
+
+    .cs-portal-band {
+        margin: 0 7%;
+        padding: 28px 22px;
+    }
+
+    .cs-dash {
+        padding: 36px 5% 60px;
+    }
+
+    .cs-journey-step {
+        grid-template-columns: 34px 1fr;
+    }
+
+    .cs-journey-step em {
+        grid-column: 2;
+    }
+
+    .cs-notice-box {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ---------- Tab Portal Peserta ---------- */
+.cs-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 5px;
+    margin-bottom: 22px;
+    background: #fff;
+    border: 1px solid var(--cs-line);
+    border-radius: 12px;
+    width: fit-content;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.cs-tab {
+    border: 0;
+    background: transparent;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #6b7e8c;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background .2s, color .2s;
+}
+
+.cs-tab:hover {
+    color: #176296;
+}
+
+.cs-tab.is-active {
+    background: var(--cs-primary-soft);
+    color: #176296;
+}
+
+.cs-tab-panel {
+    display: none;
+}
+
+.cs-tab-panel.is-active {
+    display: block;
+}
+
+.cs-progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #6a7882;
+    margin: 24px 0 8px;
+}
+
+.cs-progress {
+    height: 8px;
+    border-radius: 8px;
+    background: #fff;
+    overflow: hidden;
+}
+
+.cs-progress i {
+    display: block;
+    height: 100%;
+    border-radius: 8px;
+    background: var(--cs-primary);
+    transition: width .6s ease;
+}
+
+.cs-mini-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin: 20px 0;
+}
+
+.cs-mini-stat {
+    background: #fff;
+    border: 1px solid #dce9f0;
+    border-radius: 11px;
+    padding: 16px;
+    min-width: 0;
+}
+
+.cs-mini-stat small {
+    display: block;
+    font-size: 10px;
+    letter-spacing: .08em;
+    font-weight: 800;
+    color: #8f9ea8;
+    text-transform: uppercase;
+}
+
+.cs-mini-stat strong {
+    display: block;
+    margin-top: 8px;
+    font: 800 15px/1.3 var(--cs-display);
+    letter-spacing: -.3px;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+    .cs-mini-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .cs-tabs {
+        width: 100%;
+    }
+}

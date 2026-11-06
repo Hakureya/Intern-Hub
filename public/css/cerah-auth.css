@@ -1,0 +1,331 @@
+/* ==========================================================================
+   Cerah theme — halaman login & registrasi (resources/views/auth/*).
+   ========================================================================== */
+
+body.cs-auth {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: var(--cs-bg);
+}
+
+.auth-shell {
+    width: 100%;
+    max-width: 1080px;
+    background: #fff;
+    border: 1px solid var(--cs-line);
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 25px 65px #1f3e5514;
+}
+
+.auth-grid {
+    display: flex;
+    min-height: 640px;
+}
+
+/* Panel kiri: poster lavender seperti hero Cerah */
+.auth-brand {
+    width: 40%;
+    padding: 48px 32px;
+    color: var(--cs-ink);
+    background: #e2f1f9;
+    position: relative;
+    overflow: hidden;
+}
+
+.auth-brand::before,
+.auth-brand::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.auth-brand::before {
+    width: 240px;
+    height: 240px;
+    background: #b9def0;
+    top: -80px;
+    right: -80px;
+    opacity: .75;
+}
+
+.auth-brand::after {
+    width: 180px;
+    height: 180px;
+    background: #c4f0f2;
+    bottom: -70px;
+    left: -50px;
+    opacity: .9;
+}
+
+.auth-brand-content {
+    position: relative;
+    z-index: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.auth-logo {
+    width: 150px;
+    height: 150px;
+    padding: 12px;
+    border-radius: 16px;
+    background: #fff;
+    border: 1px solid #d2e7f2;
+    box-shadow: 0 25px 65px #1f3e551f;
+    transform: rotate(-3deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 28px;
+}
+
+.auth-logo img {
+    width: 100%;
+    height: 100%;
+    border-radius: 10px;
+    object-fit: cover;
+}
+
+.auth-brand p {
+    margin: 0;
+    color: #5a6770;
+    max-width: 280px;
+    line-height: 1.7;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+/* Panel kanan: form */
+.auth-form-panel {
+    width: 60%;
+    background: #fff;
+    padding: 40px 44px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.auth-title {
+    font: 800 30px/1.15 var(--cs-display);
+    letter-spacing: -1.5px;
+    color: var(--cs-ink);
+    margin-bottom: 8px;
+    text-align: left;
+}
+
+.auth-subtitle {
+    color: var(--cs-muted);
+    margin-bottom: 22px;
+    text-align: left;
+    font-size: 14px;
+}
+
+.auth-grid-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 14px;
+}
+
+.auth-field {
+    margin-bottom: 16px;
+}
+
+.auth-grid-fields .auth-field {
+    margin-bottom: 4px;
+}
+
+.auth-field.full {
+    grid-column: 1 / -1;
+}
+
+.auth-field label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--cs-ink);
+    margin-bottom: 7px;
+    display: block;
+}
+
+.required-mark {
+    color: var(--cs-rose);
+    margin-left: 3px;
+}
+
+.auth-input {
+    height: 44px;
+    border-radius: 8px;
+    border: 1px solid #d9e7ef;
+    box-shadow: none !important;
+    font-size: 14px;
+    padding-left: 14px;
+    padding-right: 40px;
+    background: #fff;
+    color: var(--cs-ink);
+}
+
+.auth-input:focus {
+    border-color: #6fb0d8;
+    box-shadow: 0 0 0 3px #1b6aa814 !important;
+}
+
+textarea.auth-input {
+    height: auto;
+    padding-top: 10px;
+}
+
+.password-wrap {
+    position: relative;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: 0;
+    background: transparent;
+    color: #7f909c;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.password-toggle:hover {
+    color: var(--cs-primary);
+}
+
+.auth-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 4px;
+    margin-bottom: 22px;
+    font-size: 13px;
+}
+
+.auth-row .form-check {
+    display: flex;
+    align-items: center;
+}
+
+.auth-row .form-check-input {
+    width: 16px;
+    height: 16px;
+    margin-top: 0;
+    margin-right: 8px;
+    accent-color: var(--cs-primary);
+}
+
+.auth-row .form-check-label {
+    font-size: 13px;
+    color: #637480;
+}
+
+.forgot-link {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--cs-primary);
+    text-decoration: none;
+}
+
+.auth-submit {
+    width: 100%;
+    border: 0;
+    border-radius: 8px;
+    padding: 13px 14px;
+    color: #fff;
+    font-weight: 700;
+    font-size: 14px;
+    background: var(--cs-primary);
+    box-shadow: 0 5px 14px #1b6aa822;
+    transition: transform .2s, background .2s;
+    cursor: pointer;
+}
+
+.auth-submit:hover {
+    background: var(--cs-primary-dark);
+    transform: translateY(-1px);
+}
+
+.auth-link {
+    margin-top: 16px;
+    text-align: center;
+    color: var(--cs-muted);
+    font-size: 13px;
+}
+
+.auth-link a {
+    color: var(--cs-primary);
+    font-weight: 700;
+}
+
+.strength-indicator,
+.match-indicator {
+    font-size: 12px;
+    margin-top: 6px;
+    font-weight: 600;
+}
+
+.strength-weak,
+.match-bad {
+    color: var(--cs-rose);
+}
+
+.strength-medium {
+    color: var(--cs-amber);
+}
+
+.strength-strong,
+.match-ok {
+    color: var(--cs-green);
+}
+
+body.cs-auth .invalid-feedback {
+    font-size: 12px;
+    color: var(--cs-rose);
+}
+
+@media (max-width: 1020px) {
+    .auth-grid {
+        flex-direction: column;
+        min-height: auto;
+    }
+
+    .auth-brand,
+    .auth-form-panel {
+        width: 100%;
+    }
+
+    .auth-brand {
+        padding: 28px 20px;
+    }
+
+    .auth-logo {
+        width: 100px;
+        height: 100px;
+        padding: 9px;
+        margin-bottom: 16px;
+    }
+
+    .auth-form-panel {
+        padding: 30px 22px;
+    }
+
+    .auth-grid-fields {
+        grid-template-columns: 1fr;
+    }
+}

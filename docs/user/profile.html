@@ -1,0 +1,520 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+    <head>
+        <meta charset="utf-8" />
+        <title>Sistem Manajemen Absensi</title>
+        <meta content="Dasbor Admin" name="description" />
+        <meta content="Themesbrand" name="author" />
+        <link rel="shortcut icon" href="./user/assets/images/">
+        <!-- App favicon -->
+<link rel="shortcut icon" href="./assets/images">
+<meta name="viewport" content="width=device-width, initial-scale=1">      
+    <style>
+        @import  url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;700&family=Manrope:wght@400;500;600;700&display=swap');
+
+        :root {
+            --ink: #14121a;
+            --muted: #6f7285;
+            --primary: #1f6feb;
+            --primary-soft: rgba(31, 111, 235, 0.12);
+            --accent: #f4b942;
+            --accent-soft: rgba(244, 185, 66, 0.18);
+            --danger: #e5484d;
+            --surface: #ffffff;
+            --surface-alt: #f7f5fb;
+            --border: #e6e3ef;
+        }
+
+        body {
+            background: radial-gradient(circle at 10% 10%, #fff4d8 0%, transparent 40%),
+                radial-gradient(circle at 80% 0%, #dce8ff 0%, transparent 45%),
+                linear-gradient(180deg, #f3f4fb 0%, #f9f7ff 100%);
+            color: var(--ink);
+            font-family: "Manrope", system-ui, -apple-system, sans-serif;
+        }
+
+        .attendance-page {
+            min-height: 100vh;
+            padding: 32px 16px 48px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .attendance-page::before,
+        .attendance-page::after {
+            content: "";
+            position: absolute;
+            width: 340px;
+            height: 340px;
+            border-radius: 48% 52% 58% 42%;
+            background: rgba(31, 111, 235, 0.08);
+            filter: blur(0px);
+            z-index: 0;
+        }
+
+        .attendance-page::before {
+            top: -120px;
+            right: -80px;
+            transform: rotate(12deg);
+        }
+
+        .attendance-page::after {
+            bottom: -140px;
+            left: -90px;
+            background: rgba(244, 185, 66, 0.16);
+            transform: rotate(-8deg);
+        }
+
+        .attendance-shell {
+            max-width: 1120px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .attendance-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .attendance-greeting {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .attendance-greeting span {
+            color: var(--muted);
+            font-size: 13px;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .attendance-greeting h1 {
+            font-family: "Fraunces", "Manrope", serif;
+            font-size: 28px;
+            margin: 0;
+        }
+
+        .attendance-logout {
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--ink);
+            border-radius: 999px;
+            padding: 8px 18px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .attendance-logout:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            box-shadow: 0 8px 20px rgba(31, 111, 235, 0.12);
+        }
+
+        .user-nav {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .user-nav a {
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 13px;
+            text-decoration: none;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--ink);
+        }
+
+        .user-nav a.active {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--primary-soft);
+        }
+
+        .action-card {
+            background: var(--surface);
+            border-radius: 20px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
+        }
+
+        .action-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .action-title {
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .action-form label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .action-form .form-control {
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: #fff;
+        }
+
+        .action-button {
+            width: 100%;
+            border-radius: 12px;
+            font-weight: 700;
+            padding: 10px 14px;
+        }
+
+        @media (max-width: 768px) {
+            .attendance-topbar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+
+ <!-- App css -->
+<link href="../assets/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
+<link href="../assets/css/metismenu.min.css" rel="stylesheet" type="text/css">
+<style>
+    .logo .logo-text,
+    .logo .logo-text-mini {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+        color: #ffffff;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        line-height: 1.1;
+    }
+
+    .logo .logo-text span {
+        font-size: 18px;
+    }
+
+    .logo .logo-text-mini span {
+        font-size: 14px;
+    }
+</style>
+<link href="../assets/css/icons.css" rel="stylesheet" type="text/css" />
+<link href="../assets/css/style.css" rel="stylesheet" type="text/css" />
+<link href="../assets/css/mobile-overrides.css" rel="stylesheet" type="text/css" />
+
+
+<link href="../plugins/sweetalert.min.css" rel="stylesheet">
+<!-- Table css -->
+<link href="../plugins/RWD-Table-Patterns/dist/css/rwd-table.min.css" rel="stylesheet" type="text/css" media="screen">
+<!-- DataTables -->
+<link href="../plugins/datatables/dataTables.bootstrap4.min.css" rel="stylesheet" type="text/css" />
+<link href="../plugins/datatables/buttons.bootstrap4.min.css" rel="stylesheet" type="text/css" />
+<!-- Responsive datatable examples -->
+<link href="../plugins/datatables/responsive.bootstrap4.min.css" rel="stylesheet" type="text/css" />
+            <style>
+        @import  url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;700&family=Manrope:wght@400;500;600;700&display=swap');
+
+        :root {
+            --ink: #14121a;
+            --muted: #6f7285;
+            --primary: #1f6feb;
+            --primary-soft: rgba(31, 111, 235, 0.12);
+            --accent: #f4b942;
+            --accent-soft: rgba(244, 185, 66, 0.18);
+            --danger: #e5484d;
+            --surface: #ffffff;
+            --surface-alt: #f7f5fb;
+            --border: #e6e3ef;
+        }
+
+        body {
+            background: radial-gradient(circle at 10% 10%, #fff4d8 0%, transparent 40%),
+                radial-gradient(circle at 80% 0%, #dce8ff 0%, transparent 45%),
+                linear-gradient(180deg, #f3f4fb 0%, #f9f7ff 100%);
+            color: var(--ink);
+            font-family: "Manrope", system-ui, -apple-system, sans-serif;
+        }
+
+        .attendance-page {
+            min-height: 100vh;
+            padding: 32px 16px 48px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .attendance-page::before,
+        .attendance-page::after {
+            content: "";
+            position: absolute;
+            width: 340px;
+            height: 340px;
+            border-radius: 48% 52% 58% 42%;
+            background: rgba(31, 111, 235, 0.08);
+            filter: blur(0px);
+            z-index: 0;
+        }
+
+        .attendance-page::before {
+            top: -120px;
+            right: -80px;
+            transform: rotate(12deg);
+        }
+
+        .attendance-page::after {
+            bottom: -140px;
+            left: -90px;
+            background: rgba(244, 185, 66, 0.16);
+            transform: rotate(-8deg);
+        }
+
+        .attendance-shell {
+            max-width: 1120px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .attendance-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .attendance-greeting {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .attendance-greeting span {
+            color: var(--muted);
+            font-size: 13px;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .attendance-greeting h1 {
+            font-family: "Fraunces", "Manrope", serif;
+            font-size: 28px;
+            margin: 0;
+        }
+
+        .attendance-logout {
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--ink);
+            border-radius: 999px;
+            padding: 8px 18px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .attendance-logout:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            box-shadow: 0 8px 20px rgba(31, 111, 235, 0.12);
+        }
+
+        .user-nav {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .user-nav a {
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 13px;
+            text-decoration: none;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--ink);
+        }
+
+        .user-nav a.active {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--primary-soft);
+        }
+
+        .action-card {
+            background: var(--surface);
+            border-radius: 20px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
+        }
+
+        .action-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .action-title {
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .action-form label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .action-form .form-control {
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: #fff;
+        }
+
+        .action-button {
+            width: 100%;
+            border-radius: 12px;
+            font-weight: 700;
+            padding: 10px 14px;
+        }
+
+        @media (max-width: 768px) {
+            .attendance-topbar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+  </head>
+    <body class="pb-0" >
+            <div class="attendance-page">
+        <div class="attendance-shell">
+            <div class="attendance-topbar">
+                <div class="attendance-greeting">
+                    <span>Selamat datang kembali</span>
+                    <h1>Steven</h1>
+                    <div class="user-nav">
+                        <a href="../home.html">Kehadiran</a>
+                        <a href="../monthly-report/1/download.html">Monthly Report</a>
+                        <a href="../final-report/1/download.html">Final Report</a>
+                        <a class="active" href="profile.html">Profil</a>
+                    </div>
+                </div>
+                <form method="POST" action="./logout">
+                    <input type="hidden" name="_token" value="vt2twwhUnfJyRMWTkSmXrOshr6uWaJmkPxLSH5gh">                    <button class="attendance-logout" type="submit">Keluar</button>
+                </form>
+            </div>
+
+            <div class="action-card">
+                <div class="action-header">
+                    <div class="action-title">Kelola Profil</div>
+                </div>
+                                <form method="POST" action="profile.html" class="action-form">
+                    <input type="hidden" name="_token" value="vt2twwhUnfJyRMWTkSmXrOshr6uWaJmkPxLSH5gh">                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="name">Nama</label>
+                            <input id="name" type="text" class="form-control" name="name"
+                                value="Steven" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="phone_number">Nomor Telepon</label>
+                            <input id="phone_number" type="text" class="form-control" name="phone_number"
+                                value="0812-0000-0000" required>
+                        </div>
+                        <div class="form-group col-md-12">
+                            <label for="address">Alamat</label>
+                            <input id="address" type="text" class="form-control" name="address"
+                                value="Jakarta" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="birth_date">Tanggal Lahir</label>
+                            <input id="birth_date" type="date" class="form-control" name="birth_date"
+                                value="1998-06-04" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="institution">Institusi</label>
+                            <input id="institution" type="text" class="form-control" name="institution"
+                                value="Teknik Informatika" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="position">Posisi</label>
+                            <input id="position" type="text" class="form-control" name="position"
+                                value="Admin" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="major">Jurusan</label>
+                            <input id="major" type="text" class="form-control" name="major"
+                                value="Sistem Informasi" required>
+                        </div>
+                        <div class="form-group col-md-12">
+                            <label for="email">Email</label>
+                            <input id="email" type="email" class="form-control" name="email"
+                                value="steven@example.com" required>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary action-button" type="submit">Simpan Profil</button>
+                </form>
+            </div>
+        </div>
+    </div>
+        <!-- App's Basic Js  -->
+<script src="../assets/js/jquery.min.js"></script>
+<script src="../assets/js/bootstrap.bundle.min.js"></script>
+<script src="../assets/js/metisMenu.min.js"></script>
+<script src="../assets/js/jquery.slimscroll.js"></script>
+<script src="../assets/js/waves.min.js"></script>
+
+ 
+<!-- App js-->
+<script src="../assets/js/app.js"></script>
+
+
+<!-- Sweet-Alert  -->
+
+<script src="../js/sweetalert.min.js"></script>
+<!-- Responsive-table-->
+<script src="../plugins/RWD-Table-Patterns/dist/js/rwd-table.min.js"></script>      
+<!-- Required datatable js -->
+<script src="../plugins/datatables/jquery.dataTables.min.js"></script>
+<script src="../plugins/datatables/dataTables.bootstrap4.min.js"></script>
+<!-- Buttons examples -->
+<script src="../plugins/datatables/dataTables.buttons.min.js"></script>
+<script src="../plugins/datatables/buttons.bootstrap4.min.js"></script>
+<script src="../plugins/datatables/jszip.min.js"></script>
+<script src="../plugins/datatables/pdfmake.min.js"></script>
+<script src="../plugins/datatables/vfs_fonts.js"></script>
+<script src="../plugins/datatables/buttons.html5.min.js"></script>
+<script src="../plugins/datatables/buttons.print.min.js"></script>
+<script src="../plugins/datatables/buttons.colVis.min.js"></script>
+<!-- Responsive examples -->
+<script src="../plugins/datatables/dataTables.responsive.min.js"></script>
+<script src="../plugins/datatables/responsive.bootstrap4.min.js"></script>
+
+<!-- Datatable init js -->
+<script src="../assets/pages/datatables.init.js"></script>   
+
+
+
+    
+            </body>
+</html>
+

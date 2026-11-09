@@ -6,6 +6,9 @@
       $ids        id input form: ['name' => ..., 'email' => ..., 'division' => ...]
       $name, $email, $roleLabel, $division (teks), $photoUrl (boleh null)
       $stickyTop  (opsional) jarak kartu dari atas layar saat di-scroll, default 90px (di bawah topbar admin)
+      $idCard     (opsional) array ['logo' => url, 'discoverable' => bool, 'photoVisible' => bool, 'fields' => [...]].
+                  Jika diisi, kartu tampil sebagai pratinjau kartu peserta (apa yang dilihat peserta lain),
+                  lengkap dengan centang "bisa ditemukan" dan "tampilkan foto". Tanpa ini = tampilan lama.
 --}}
 <style>
     .pfc {
@@ -233,6 +236,7 @@
     }
 </style>
 
+@if (empty($idCard))
 <div class="pfc" style="--pfc-top: {{ $stickyTop ?? '90px' }};">
     <div class="pfc-photo" aria-hidden="true">
         <img id="pfcImg" alt="Foto profil" @if ($photoUrl) src="{{ $photoUrl }}" @else hidden @endif>
@@ -256,6 +260,55 @@
         hidden>
     <input type="hidden" id="pfcRemoveFlag" name="remove_photo" value="0" form="{{ $formId }}">
 </div>
+@else
+<div class="pfc pfc--id" style="--pfc-top: {{ $stickyTop ?? '90px' }};">
+    <div class="pc-fit pc-fit--profile">
+    <div class="pc-id" id="pcPreviewCard">
+        <div class="pc-id-top">
+            <img class="pc-id-logo" src="{{ $idCard['logo'] }}" alt="PLN Suku Cadang">
+            <span class="pc-id-badge">Intern</span>
+        </div>
+        <div class="pc-id-photo{{ empty($idCard['photoVisible']) ? ' is-off' : '' }}" id="pcPhotoBox">
+            <img id="pfcImg" alt="Foto profil" @if ($photoUrl) src="{{ $photoUrl }}" @else hidden @endif>
+            <span class="pc-id-initials" id="pfcInitials" @if ($photoUrl) hidden @endif>-</span>
+            <span class="pc-id-initials pc-id-off" id="pcInitialsOff">-</span>
+        </div>
+        <div class="pc-id-name"><i>&#10022;</i><span id="pfcName">{{ $name }}</span><i>&#10022;</i></div>
+        <ul class="pc-id-info" id="pcInfo"></ul>
+        <div class="pc-id-foot">Learn &middot; Contribute &middot; Grow</div>
+    </div>
+    </div>
+    <p class="pfc-preview-note">Pratinjau langsung: begini kartumu terlihat oleh peserta lain.</p>
+
+    <div class="pfc-actions">
+        <button type="button" class="pfc-btn" id="pfcUpload">Unggah foto</button>
+        <button type="button" class="pfc-btn" id="pfcEdit" @if (!$photoUrl) disabled @endif>Edit foto</button>
+        <button type="button" class="pfc-btn" id="pfcRemove" @if (!$photoUrl) disabled @endif>Hapus foto</button>
+    </div>
+    <small class="pfc-hint">JPG, PNG, atau WebP. Maksimal 10 MB. Foto dipotong 1 : 1.</small>
+    <div class="pfc-error" id="pfcError" hidden></div>
+
+    <div class="pfc-opts">
+        <input type="hidden" name="card_visibility[photo]" value="0" form="{{ $formId }}">
+        <label class="pc-check">
+            <input type="checkbox" name="card_visibility[photo]" value="1" form="{{ $formId }}" id="pcShowPhoto"
+                data-pc-show="photo" {{ !empty($idCard['photoVisible']) ? 'checked' : '' }}>
+            <span>Tampilkan foto di kartu</span>
+        </label>
+        <input type="hidden" name="is_discoverable" value="0" form="{{ $formId }}">
+        <label class="pc-check">
+            <input type="checkbox" name="is_discoverable" value="1" form="{{ $formId }}" id="pcDiscoverable"
+                {{ !empty($idCard['discoverable']) ? 'checked' : '' }}>
+            <span>Izinkan peserta lain menemukan saya
+                <small>Jika dimatikan, kartumu tidak muncul di pencarian maupun Direktori Peserta.</small></span>
+        </label>
+    </div>
+
+    <input type="file" id="pfcFile" name="profile_photo" form="{{ $formId }}" accept=".jpg,.jpeg,.png,.webp"
+        hidden>
+    <input type="hidden" id="pfcRemoveFlag" name="remove_photo" value="0" form="{{ $formId }}">
+</div>
+@endif
 
 {{-- Editor crop 1 : 1 --}}
 <div class="pfc-modal" id="pfcModal" hidden role="dialog" aria-modal="true" aria-label="Atur foto profil">
@@ -341,9 +394,13 @@
                 division = divisionSelect.options[divisionSelect.selectedIndex].text.trim() || '-';
             }
 
-            document.getElementById('pfcName').textContent = name || '-';
-            document.getElementById('pfcEmail').textContent = email || '-';
-            document.getElementById('pfcDivision').textContent = division;
+            // Tampilan kartu ID tidak punya elemen email/divisi terpisah, jadi semuanya dicek dulu.
+            var nameEl = document.getElementById('pfcName');
+            var emailEl = document.getElementById('pfcEmail');
+            var divisionEl = document.getElementById('pfcDivision');
+            if (nameEl) nameEl.textContent = name || '-';
+            if (emailEl) emailEl.textContent = email || '-';
+            if (divisionEl) divisionEl.textContent = division;
             initialsEl.textContent = initials(name);
         }
 
@@ -600,3 +657,71 @@
         renderPhoto();
     });
 </script>
+
+@if (!empty($idCard))
+<script>
+    // Pratinjau langsung: baris info kartu mengikuti isian form + centang "tampilkan di kartu".
+    document.addEventListener('DOMContentLoaded', function() {
+        if (!window.PeopleCard) return;
+
+        var F = @json($idCard['fields']);
+        var info = document.getElementById('pcInfo');
+        var photoBox = document.getElementById('pcPhotoBox');
+        var offInitials = document.getElementById('pcInitialsOff');
+        var form = document.getElementById(@json($formId));
+        var checks = [].slice.call(document.querySelectorAll('[data-pc-show]'));
+
+        function el(key) { return F[key] ? document.getElementById(F[key]) : null; }
+        function text(key) { var e = el(key); return e ? String(e.value || '').trim() : ''; }
+        function isShown(key) {
+            return checks.some(function(c) { return c.getAttribute('data-pc-show') === key && c.checked; });
+        }
+
+        function build() {
+            var divSel = el('division');
+            var mentor = text('mentor');
+            var s = PeopleCard.fmtDate(text('start'));
+            var e = PeopleCard.fmtDate(text('end'));
+            var values = {
+                division: divSel && divSel.value ? divSel.options[divSel.selectedIndex].text.trim() : '',
+                mentor: mentor === '-' ? '' : mentor,
+                major: text('major'),
+                institution: text('institution'),
+                period: (s || e) ? (s || '?') + ' – ' + (e || '?') : '',
+                email: text('email'),
+                phone_number: text('phone_number'),
+                address: text('address'),
+                birth_date: PeopleCard.fmtDate(text('birth_date'))
+            };
+
+            var rows = PeopleCard.FIELDS.filter(function(f) {
+                return isShown(f.k) && values[f.k];
+            }).map(function(f) {
+                return { k: f.k, label: f.label, value: values[f.k] };
+            });
+
+            info.innerHTML = PeopleCard.rowsHtml(rows);
+            photoBox.classList.toggle('is-off', !isShown('photo'));
+            offInitials.textContent = PeopleCard.initialsOf(text('name'));
+        }
+
+        // Dua centang periode (mulai & selesai) selalu sama.
+        checks.forEach(function(c) {
+            c.addEventListener('change', function() {
+                var key = c.getAttribute('data-pc-show');
+                checks.forEach(function(o) {
+                    if (o !== c && o.getAttribute('data-pc-show') === key) o.checked = c.checked;
+                });
+                build();
+            });
+        });
+
+        if (form) {
+            form.addEventListener('input', build);
+            // setTimeout: nama mentor diisi skrip lain saat divisi berubah.
+            form.addEventListener('change', function() { setTimeout(build, 0); });
+        }
+        build();
+    });
+</script>
+@endif

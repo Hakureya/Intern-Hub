@@ -18,6 +18,7 @@
         'profile' => 'Profil',
         'internship_templates' => 'Draft Dokumen Magang',
         'worklog' => 'Log Pekerjaan',
+        'directory' => 'Direktori Peserta',
     ];
     $csPageTitle = $csTitles[$activeTab] ?? 'Portal Peserta';
 
@@ -43,6 +44,9 @@
     <div class="cs-nav-label">Workspace</div>
     <a class="cs-side-link {{ $isHomeActive ? 'active' : '' }}" href="{{ route('home') }}">
         <i class="mdi mdi-home-outline"></i> Home
+    </a>
+    <a class="cs-side-link {{ $activeTab === 'directory' ? 'active' : '' }}" href="{{ route('directory.index') }}">
+        <i class="mdi mdi-account-search-outline"></i> Direktori Peserta
     </a>
     <a class="cs-side-link {{ $activeTab === 'attendance' ? 'active' : '' }}"
         href="{{ route('user.attendance.index') }}">
@@ -104,6 +108,7 @@
         <div class="cs-crumb">Portal Peserta <span>/</span> <strong>{{ $csPageTitle }}</strong></div>
     </div>
     <div class="cs-topbar-right">
+        @include('includes.people-search')
         <span class="cs-date">{{ $csToday }}</span>
         <div class="dropdown cs-user-menu">
             <a class="dropdown-toggle arrow-none cs-avatar-toggle" data-toggle="dropdown" href="#" role="button"

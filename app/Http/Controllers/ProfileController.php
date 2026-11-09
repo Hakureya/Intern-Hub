@@ -75,6 +75,9 @@ class ProfileController extends Controller
             'emergency_contact_relation' => ['nullable', 'string', 'max:255'],
             'bank_name' => ['nullable', 'string', 'max:255'],
             'bank_account_number' => ['nullable', 'string', 'max:50'],
+            'is_discoverable' => ['nullable', 'boolean'],
+            'card_visibility' => ['nullable', 'array'],
+            'card_visibility.*' => ['nullable', 'boolean'],
         ]);
 
         $oldEmail = $user->email;
@@ -97,6 +100,15 @@ class ProfileController extends Controller
         $user->bank_name = $request->bank_name;
         $user->bank_account_number = $request->bank_account_number;
         $user->major = $request->major;
+
+        // Pengaturan direktori: bisa ditemukan atau tidak + isian yang tampil di kartu.
+        $user->is_discoverable = $request->boolean('is_discoverable');
+        $cardInput = (array) $request->input('card_visibility', []);
+        $visibility = [];
+        foreach (array_keys(\App\Models\User::CARD_FIELDS) as $key) {
+            $visibility[$key] = filter_var($cardInput[$key] ?? false, FILTER_VALIDATE_BOOLEAN);
+        }
+        $user->card_visibility = $visibility;
 
         if ($request->hasFile('profile_photo')) {
             if ($user->profile_photo_path && Storage::disk('public')->exists($user->profile_photo_path)) {

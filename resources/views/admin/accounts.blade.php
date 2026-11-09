@@ -537,10 +537,6 @@
                 table.column(4).search(this.value).draw();
             });
 
-            $(document).on('submit', 'form[data-confirm]', function() {
-                return window.confirm($(this).data('confirm'));
-            });
-
             /* ---------- Modal tambah / ubah ---------- */
             var $form = $('#accountForm');
 

@@ -2,7 +2,7 @@
 
 @section('css')
     <link href="{{ URL::asset('css/cerah-portal.css') }}?v=2" rel="stylesheet" type="text/css" />
-    <link href="{{ URL::asset('css/work-log.css') }}?v=6" rel="stylesheet" type="text/css" />
+    <link href="{{ URL::asset('css/work-log.css') }}?v=7" rel="stylesheet" type="text/css" />
 @endsection
 
 @section('content')
@@ -47,7 +47,7 @@
             <div class="wl-desc">{{ $task->description }}</div>
 
             @if ($task->reference_file_path || $task->reference_link)
-                <h4 class="wl-sub-title">Referensi dari mentor</h4>
+                <h4 class="wl-sub-title">Referensi Tugas</h4>
                 @if ($task->reference_file_path)
                     <div class="wl-work-item">
                         <i class="mdi mdi-paperclip wl-work-ic"></i>
@@ -71,8 +71,10 @@
                     @if ($task->require_attachment) <small class="req">wajib ada lampiran</small> @endif
                 </h4>
 
-                @if ($mine->status === 'belum' && $mine->review_note)
-                    <div class="wl-note wl-note--rose" style="margin-bottom: 12px;">Catatan mentor: {{ $mine->review_note }}</div>
+                @if ($mine->review_note)
+                    <div class="wl-note {{ $mine->status === 'belum' ? 'wl-note--rose' : ($mine->status === 'sudah' ? 'wl-note--green' : '') }}" style="margin-bottom: 12px;">
+                        <b>Catatan mentor:</b> {{ $mine->review_note }}
+                    </div>
                 @endif
 
                 @if ($errors->any())
@@ -117,14 +119,15 @@
                         </button>
                     </form>
                 @elseif ($mine->status === 'menunggu')
-                    @if ($mine->proof_note) <div class="wl-note" style="margin-top: 12px;">{{ $mine->proof_note }}</div> @endif
+                    @if ($mine->proof_note) <div class="wl-note wl-note--blue" style="margin-top: 12px;"><b>Catatanmu:</b> {{ $mine->proof_note }}</div> @endif
                     <div class="wl-hint" style="margin-top: 10px;">Menunggu persetujuan mentor. Kamu masih bisa menambah atau mengganti lampiran.</div>
                     <form method="POST" action="{{ route('user.work-logs.withdraw', $task) }}" style="margin-top: 12px;"
-                        onsubmit="return confirm('Tarik pengajuan? Status kembali menjadi Belum dan lampiran tetap tersimpan.')">
+                        data-confirm="Status kembali menjadi Belum dan lampiran tetap tersimpan. Kamu bisa mengajukan lagi kapan saja." data-confirm-title="Tarik pengajuan?" data-confirm-ok="Ya, tarik" data-confirm-tone="danger">
                         @csrf
                         <button type="submit" class="wl-btn wl-btn--danger"><i class="mdi mdi-undo-variant"></i> Tarik pengajuan</button>
                     </form>
                 @else
+                    @if ($mine->proof_note) <div class="wl-note wl-note--blue" style="margin-top: 12px;"><b>Catatanmu:</b> {{ $mine->proof_note }}</div> @endif
                     <div class="wl-hint" style="margin-top: 10px;">Tugas sudah disetujui mentor.</div>
                 @endif
             @endif

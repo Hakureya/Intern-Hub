@@ -146,6 +146,7 @@
     @include('magang.components.footer')
 
     @stack('scripts')
+    @include('includes.dialog')
 </body>
 
 </html>

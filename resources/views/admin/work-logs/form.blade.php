@@ -3,7 +3,7 @@
 @php($isEdit = !is_null($task))
 
 @section('css')
-    <link href="{{ URL::asset('css/work-log.css') }}?v=6" rel="stylesheet" type="text/css" />
+    <link href="{{ URL::asset('css/work-log.css') }}?v=7" rel="stylesheet" type="text/css" />
 @endsection
 
 @section('breadcrumb')
@@ -34,7 +34,7 @@
 
         <form method="POST" enctype="multipart/form-data" data-wl-picker
             action="{{ $isEdit ? route('work-logs.update', $task) : route('work-logs.store') }}"
-            @if ($isEdit) onsubmit="return confirm('Menyimpan perubahan akan mengembalikan status semua peserta menjadi Belum. Lanjutkan?')" @endif>
+            @if ($isEdit) data-confirm="Menyimpan perubahan akan mengembalikan status semua peserta menjadi Belum. Lampiran mereka tetap tersimpan." data-confirm-title="Simpan perubahan?" data-confirm-ok="Ya, simpan" data-confirm-level="warning" data-confirm-tone="normal" @endif>
             @csrf
             @if ($isEdit) @method('PUT') @endif
 

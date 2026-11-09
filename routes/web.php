@@ -110,6 +110,10 @@ Route::group(['middleware' => ['auth', 'Role'], 'roles' => ['super_admin']], fun
 Route::group(['middleware' => ['auth']], function () {
     Route::get('/home', '\App\Http\Controllers\HomeController@userDashboard')->name('home'); //user home
 
+    // direktori peserta + pencarian (admin, mentor, dan peserta)
+    Route::get('/direktori', [\App\Http\Controllers\DirectoryController::class, 'index'])->name('directory.index');
+    Route::get('/direktori/cari', [\App\Http\Controllers\DirectoryController::class, 'search'])->middleware('throttle:90,1')->name('directory.search');
+
     Route::get('/user/attendance', '\App\Http\Controllers\UserAttendanceController@index')->name('user.attendance.index'); //user kehadiran
     Route::post('/user/attendance', '\App\Http\Controllers\UserAttendanceController@store')->name('user.attendance.store');
     Route::post('/home/time-in', '\App\Http\Controllers\UserAttendanceController@store')->name('home.timein.store');

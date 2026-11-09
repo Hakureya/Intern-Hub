@@ -95,7 +95,7 @@
                                 </td>
                                 <td>
                                     <form method="POST" action="{{ route('divisions.destroy', $division->id) }}"
-                                        onsubmit="return confirm('Hapus divisi ini?');">
+                                        data-confirm="Hapus divisi ini?">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="btn btn-sm btn-danger">Hapus</button>

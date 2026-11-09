@@ -293,7 +293,7 @@ class WorkTaskController extends Controller
             $this->deleteReferenceIfUnused($oldReference, $task->id);
         }
 
-        flash()->success('Berhasil', 'Tugas diperbarui. Status seluruh peserta dikembalikan menjadi Belum; lampiran mereka tetap tersimpan.');
+        flash()->success('Berhasil', 'Tugas diperbarui. Status seluruh peserta dikembalikan menjadi Belum.');
 
         return redirect()->route('work-logs.show', $task);
     }

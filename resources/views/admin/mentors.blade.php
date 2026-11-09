@@ -100,7 +100,7 @@
                                 </td>
                                 <td>
                                     <form method="POST" action="{{ route('mentors.destroy', $mentor->id) }}"
-                                        onsubmit="return confirm('Hapus mentor ini?');">
+                                        data-confirm="Hapus mentor ini?">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="btn btn-sm btn-danger">Hapus</button>

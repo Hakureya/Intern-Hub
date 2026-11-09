@@ -300,7 +300,7 @@
 
             // Batasi maksimal 5 file tambahan
             if (wrapper.children.length >= 5) {
-                alert('Maksimal 5 dokumen pendukung yang diizinkan.');
+                CSDialog.alert({ level: 'warning', title: 'Batas tercapai', message: 'Maksimal 5 dokumen pendukung yang diizinkan.' });
                 return;
             }
 

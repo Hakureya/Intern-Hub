@@ -1,0 +1,50 @@
+/* CSDialog: pop up kustom (alert / konfirmasi). Prefiks "csd-". */
+.csd-backdrop { position: fixed; inset: 0; z-index: 99999; display: flex; align-items: center; justify-content: center; padding: 20px;
+    background: rgba(15, 42, 67, .52); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+    font-family: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; animation: csd-fade .2s ease both; }
+.csd-backdrop.csd-out { animation: csd-fade-out .16s ease both; }
+
+.csd-box { --csd-c: #1b6aa8; --csd-soft: #e4f2fa; position: relative; width: min(420px, 100%); overflow: hidden; outline: none;
+    background: #fff; border-radius: 22px; padding: 30px 28px 24px; text-align: center; box-shadow: 0 30px 70px rgba(15, 42, 67, .35);
+    animation: csd-pop .34s cubic-bezier(.2, .9, .3, 1.25) both; }
+.csd-out .csd-box { animation: csd-pop-out .16s ease both; }
+.csd-success { --csd-c: #5f8a22; --csd-soft: #eaf4d4; }
+.csd-error, .csd-danger { --csd-c: #c0566f; --csd-soft: #fae8ed; }
+.csd-warning { --csd-c: #b7791f; --csd-soft: #fff4d8; }
+
+.csd-icon { width: 78px; height: 78px; margin: 0 auto 16px; border-radius: 50%; background: var(--csd-soft); display: flex; align-items: center; justify-content: center; }
+.csd-icon svg { width: 48px; height: 48px; fill: none; stroke: var(--csd-c); stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; overflow: visible; }
+.csd-ring { stroke-width: 2.2; opacity: .3; stroke-dasharray: 152; stroke-dashoffset: 152; animation: csd-draw .6s ease forwards; }
+.csd-mark { stroke-dasharray: 60; stroke-dashoffset: 60; animation: csd-draw .45s .28s ease forwards; }
+
+.csd-title { margin: 0 0 8px; font: 800 21px 'Manrope', 'DM Sans', system-ui, sans-serif; letter-spacing: -.03em; color: #0f2a43; }
+.csd-msg { margin: 0; font-size: 14.5px; line-height: 1.65; color: #5b6f86; white-space: pre-line; word-break: break-word; }
+
+.csd-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 24px; }
+.csd-btn { min-width: 112px; padding: 11px 22px; border-radius: 12px; border: 1px solid transparent; cursor: pointer;
+    font-family: inherit; font-weight: 700; font-size: 14px; line-height: 1.2; transition: transform .12s, background .2s, border-color .2s, box-shadow .2s; }
+.csd-btn:active { transform: translateY(1px) scale(.98); }
+.csd-btn:focus-visible { outline: 3px solid rgba(27, 106, 168, .35); outline-offset: 2px; }
+.csd-btn--primary { background: var(--csd-c); color: #fff; box-shadow: 0 8px 18px -8px var(--csd-c); }
+.csd-btn--primary:hover { filter: brightness(.93); }
+.csd-btn--ghost { background: #fff; color: #0f2a43; border-color: #d9e7ef; }
+.csd-btn--ghost:hover { background: #f1f7fb; }
+
+.csd-timer { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; }
+.csd-timer i { display: block; height: 100%; background: var(--csd-c); opacity: .55; transform-origin: left; animation-name: csd-timer; animation-timing-function: linear; animation-fill-mode: forwards; }
+
+@keyframes csd-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes csd-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes csd-pop { from { opacity: 0; transform: translateY(14px) scale(.9); } to { opacity: 1; transform: none; } }
+@keyframes csd-pop-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(8px) scale(.96); } }
+@keyframes csd-draw { to { stroke-dashoffset: 0; } }
+@keyframes csd-timer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+@media (max-width: 480px) {
+    .csd-box { padding: 26px 20px 20px; border-radius: 20px; }
+    .csd-actions .csd-btn { flex: 1 1 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .csd-backdrop, .csd-box, .csd-ring, .csd-mark, .csd-out .csd-box { animation: none; }
+    .csd-ring, .csd-mark { stroke-dashoffset: 0; }
+}

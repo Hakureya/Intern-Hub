@@ -1,7 +1,7 @@
 @extends('layouts.master')
 
 @section('css')
-    <link href="{{ URL::asset('css/work-log.css') }}?v=6" rel="stylesheet" type="text/css" />
+    <link href="{{ URL::asset('css/work-log.css') }}?v=7" rel="stylesheet" type="text/css" />
 @endsection
 
 @section('breadcrumb')
@@ -117,10 +117,10 @@
                             <span class="wl-badge wl-badge--menunggu">{{ $row['counts']['menunggu'] }} menunggu persetujuan</span>
                         @endif
                         @if ($row['counts']['sudah'])
-                            <span class="wl-badge wl-badge--sudah">{{ $row['counts']['sudah'] }} sudah</span>
+                            <span class="wl-badge wl-badge--sudah">{{ $row['counts']['sudah'] }} sudah selesai</span>
                         @endif
                         @if ($row['counts']['belum'])
-                            <span class="wl-badge wl-badge--belum">{{ $row['counts']['belum'] }} belum</span>
+                            <span class="wl-badge wl-badge--belum">{{ $row['counts']['belum'] }} belum dikerjakan</span>
                         @endif
                     </div>
                     @include('includes.work-people', ['people' => $row['people']])

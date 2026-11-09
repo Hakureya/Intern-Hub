@@ -9,6 +9,7 @@
 
 <!-- App js-->
 <script src="{{ URL::asset('assets/js/app.js') }}"></script>
+<script src="{{ URL::asset('js/people-card.js') }}?v=1"></script>
 
 
 <!-- Sweet-Alert  -->

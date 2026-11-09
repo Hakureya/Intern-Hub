@@ -9,6 +9,18 @@
     $cardPhotoPath = $displayUser->profile_photo_path ?? optional($user)->profile_photo_path;
     $cardDivisionId = old('division_id', $displayUser->division_id ?? optional($user)->division_id);
     $cardDivision = collect($divisions ?? [])->firstWhere('id', (int) $cardDivisionId);
+
+    // Pengaturan kartu / direktori. Setelah gagal validasi, pakai isian yang baru saja dikirim.
+    $savedVis = $displayUser->cardVisibility();
+    $hasOldVis = old('card_visibility') !== null || old('is_discoverable') !== null;
+    $vis = function ($key) use ($savedVis, $hasOldVis) {
+        return $hasOldVis ? (bool) old('card_visibility.' . $key) : (bool) ($savedVis[$key] ?? false);
+    };
+    $isDiscoverable = $hasOldVis ? (bool) old('is_discoverable') : (bool) ($displayUser->is_discoverable ?? true);
+    $showCheck = function ($key) use ($vis) {
+        return '<label class="pc-show"><input type="checkbox" name="card_visibility[' . $key . ']" value="1" data-pc-show="' . $key . '" '
+            . ($vis($key) ? 'checked' : '') . '> Tampilkan di kartu</label>';
+    };
 @endphp
 @include('layouts.user-navbar', ['active' => 'profile'])
 <div class="attendance-page">
@@ -31,6 +43,24 @@
                 'stickyTop' => '88px',
                 'division' => optional($cardDivision)->name,
                 'photoUrl' => $cardPhotoPath ? asset('storage/' . $cardPhotoPath) : null,
+                'idCard' => [
+                    'logo' => asset('assets/images/logo-plnsc.png'),
+                    'discoverable' => $isDiscoverable,
+                    'photoVisible' => $vis('photo'),
+                    'fields' => [
+                        'name' => 'name',
+                        'phone_number' => 'phone_number',
+                        'address' => 'address',
+                        'birth_date' => 'birth_date',
+                        'institution' => 'institution',
+                        'start' => 'internship_start_date',
+                        'end' => 'internship_end_date',
+                        'division' => 'division_id',
+                        'mentor' => 'mentor_name',
+                        'major' => 'major',
+                        'email' => 'email',
+                    ],
+                ],
             ])
         </div>
         <div class="col-lg-8">
@@ -64,32 +94,38 @@
                         <label for="phone_number">{{ __('global.phone_number') }}</label>
                         <input id="phone_number" type="text" class="form-control" name="phone_number"
                             value="{{ old('phone_number', $displayUser->phone_number) }}" required>
+                        {!! $showCheck('phone_number') !!}
                     </div>
                     <div class="form-group col-md-6">
                         <label for="address">{{ __('global.address') }}</label>
                         <input id="address" type="text" class="form-control" name="address"
                             value="{{ old('address', $displayUser->address) }}" required>
+                        {!! $showCheck('address') !!}
                     </div>
                     <div class="form-group col-md-6">
                         <label for="birth_date">{{ __('global.birth_date') }}</label>
                         <input id="birth_date" type="date" class="form-control" name="birth_date"
                             value="{{ old('birth_date', $displayUser->birth_date) }}" required>
+                        {!! $showCheck('birth_date') !!}
                     </div>
                     <div class="form-group col-md-6">
                         <label for="institution">{{ __('global.institution') }}</label>
                         <input id="institution" type="text" class="form-control" name="institution"
                             value="{{ old('institution', $displayUser->institution) }}" required>
+                        {!! $showCheck('institution') !!}
                     </div>
                     <div class="form-group col-md-6">
                         <label for="internship_start_date">Periode Magang Mulai</label>
                         <input id="internship_start_date" type="date" class="form-control"
                             name="internship_start_date"
                             value="{{ old('internship_start_date', $displayUser->internship_start_date ?? optional($user)->internship_start_date) }}">
+                        {!! $showCheck('period') !!}
                     </div>
                     <div class="form-group col-md-6">
                         <label for="internship_end_date">Periode Magang Selesai</label>
                         <input id="internship_end_date" type="date" class="form-control" name="internship_end_date"
                             value="{{ old('internship_end_date', $displayUser->internship_end_date ?? optional($user)->internship_end_date) }}">
+                        {!! $showCheck('period') !!}
                     </div>
 
                     <div class="col-12">
@@ -119,21 +155,25 @@
                                 </option>
                             @endforeach
                         </select>
+                        {!! $showCheck('division') !!}
                     </div>
                     <div class="form-group col-md-6">
                         <label for="mentor_name">Mentor</label>
                         <input id="mentor_name" type="text" class="form-control" name="mentor_name"
                             value="{{ $mentorName }}" readonly>
+                        {!! $showCheck('mentor') !!}
                     </div>
                     <div class="form-group col-md-6">
                         <label for="major">{{ __('global.major') }}</label>
                         <input id="major" type="text" class="form-control" name="major"
                             value="{{ old('major', optional($user)->major) }}" required>
+                        {!! $showCheck('major') !!}
                     </div>
                     <div class="form-group col-md-6">
                         <label for="email">{{ __('global.email') }}</label>
                         <input id="email" type="email" class="form-control" name="email"
                             value="{{ old('email', $displayUser->email) }}" required>
+                        {!! $showCheck('email') !!}
                     </div>
 
                     <div class="col-12">

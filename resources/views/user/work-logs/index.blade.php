@@ -2,7 +2,7 @@
 
 @section('css')
     <link href="{{ URL::asset('css/cerah-portal.css') }}?v=2" rel="stylesheet" type="text/css" />
-    <link href="{{ URL::asset('css/work-log.css') }}?v=6" rel="stylesheet" type="text/css" />
+    <link href="{{ URL::asset('css/work-log.css') }}?v=7" rel="stylesheet" type="text/css" />
 @endsection
 
 @section('content')
@@ -37,11 +37,11 @@
             <a class="wl-stat {{ $status === '' ? 'is-active' : '' }}" href="{{ route('user.work-logs.index', $q) }}">
                 <b>{{ array_sum($stats) }}</b><span>Semua tugas</span></a>
             <a class="wl-stat {{ $status === 'sudah' ? 'is-active' : '' }}" href="{{ route('user.work-logs.index', $q + ['status' => 'sudah']) }}">
-                <b>{{ $stats['sudah'] }}</b><span>Sudah</span></a>
+                <b>{{ $stats['sudah'] }}</b><span>Sudah selesai</span></a>
             <a class="wl-stat {{ $status === 'menunggu' ? 'is-active' : '' }}" href="{{ route('user.work-logs.index', $q + ['status' => 'menunggu']) }}">
                 <b>{{ $stats['menunggu'] }}</b><span>Menunggu persetujuan</span></a>
             <a class="wl-stat {{ $status === 'belum' ? 'is-active' : '' }}" href="{{ route('user.work-logs.index', $q + ['status' => 'belum']) }}">
-                <b>{{ $stats['belum'] }}</b><span>Belum</span></a>
+                <b>{{ $stats['belum'] }}</b><span>Belum dikerjakan</span></a>
         </div>
 
         <div class="wl-list">

@@ -187,12 +187,3 @@
     </div>
 @endsection
 
-@section('script-bottom')
-    <script>
-        (function($) {
-            $(document).on('submit', 'form[data-confirm]', function() {
-                return window.confirm($(this).data('confirm'));
-            });
-        })(jQuery);
-    </script>
-@endsection

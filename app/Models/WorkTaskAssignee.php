@@ -11,9 +11,9 @@ class WorkTaskAssignee extends Model
     public const SUDAH = 'sudah';
 
     public const LABELS = [
-        self::BELUM => 'Belum',
+        self::BELUM => 'Belum dikerjakan',
         self::MENUNGGU => 'Menunggu persetujuan',
-        self::SUDAH => 'Sudah',
+        self::SUDAH => 'Sudah selesai',
     ];
 
     protected $fillable = [

@@ -37,6 +37,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="{{ URL::asset('css/cerah.css') }}?v=3" rel="stylesheet" type="text/css" />
 <link href="{{ URL::asset('css/cerah-admin.css') }}?v=1" rel="stylesheet" type="text/css" />
+<link href="{{ URL::asset('css/people-card.css') }}?v=1" rel="stylesheet" type="text/css" />
 
 {{-- <link href="{{ URL::asset('plugins/sweet-alert2/sweetalert2.min.css') }}" rel="stylesheet" type="text/css"> --}}
 <link href="{{ asset('plugins/sweetalert.min.css') }}" rel="stylesheet">

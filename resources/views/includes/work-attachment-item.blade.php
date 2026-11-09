@@ -23,7 +23,7 @@
                 @endif
                 <hr>
                 <form method="POST" action="{{ route('user.work-logs.attachments.destroy', ['task' => $task, 'attachment' => $att]) }}"
-                    onsubmit="return confirm('Hapus lampiran ini?')">
+                    data-confirm="Hapus lampiran ini?" data-confirm-ok="Ya, hapus">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="is-danger"><i class="mdi mdi-trash-can-outline"></i> Hapus</button>

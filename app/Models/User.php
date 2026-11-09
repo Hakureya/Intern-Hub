@@ -15,6 +15,8 @@ class User extends Authenticatable
         'email',
         'password',
         'is_active',
+        'is_discoverable',
+        'card_visibility',
         'phone_number',
         'address',
         'birth_date',
@@ -39,7 +41,110 @@ class User extends Authenticatable
 
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'is_discoverable' => 'boolean',
+        'card_visibility' => 'array',
     ];
+
+    /** Isian yang boleh diatur tampil/tidaknya di kartu peserta (nama selalu tampil). */
+    public const CARD_FIELDS = [
+        'photo' => 'Foto',
+        'division' => 'Divisi',
+        'mentor' => 'Mentor',
+        'major' => 'Jurusan',
+        'institution' => 'Asal Kampus',
+        'period' => 'Periode Magang',
+        'email' => 'Email',
+        'phone_number' => 'Nomor Telepon',
+        'address' => 'Alamat',
+        'birth_date' => 'Tanggal Lahir',
+    ];
+
+    /** Bawaan sebelum peserta mengatur sendiri: hanya foto + divisi yang tampil. */
+    public const CARD_DEFAULTS = ['photo' => true, 'division' => true];
+
+    /** Status tampil tiap isian kartu (lengkap, true/false). */
+    public function cardVisibility(): array
+    {
+        $saved = is_array($this->card_visibility) ? $this->card_visibility : [];
+        $result = [];
+
+        foreach (array_keys(self::CARD_FIELDS) as $key) {
+            $result[$key] = array_key_exists($key, $saved)
+                ? (bool) $saved[$key]
+                : (self::CARD_DEFAULTS[$key] ?? false);
+        }
+
+        return $result;
+    }
+
+    /** Peserta yang aktif dan mengizinkan dirinya ditemukan. */
+    public function scopeDiscoverable($query)
+    {
+        return $query->peserta()
+            ->where('users.is_active', 1)
+            ->where('users.is_discoverable', 1);
+    }
+
+    private static function idDate($value): ?string
+    {
+        if (! $value) {
+            return null;
+        }
+
+        try {
+            $date = \Carbon\Carbon::parse($value);
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        $months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+        return $date->format('d') . ' ' . $months[$date->month - 1] . ' ' . $date->year;
+    }
+
+    /**
+     * Data kartu seperti yang dilihat peserta lain.
+     * Isian yang disembunyikan TIDAK ikut dikirim ke browser sama sekali.
+     */
+    public function directoryCard(): array
+    {
+        $vis = $this->cardVisibility();
+        $words = array_slice(array_filter(preg_split('/\s+/', trim((string) $this->name))), 0, 2);
+        $initials = '';
+        foreach ($words as $word) {
+            $initials .= mb_strtoupper(mb_substr($word, 0, 1));
+        }
+
+        $start = self::idDate($this->internship_start_date);
+        $end = self::idDate($this->internship_end_date);
+
+        $candidates = [
+            'division' => optional($this->division)->name,
+            'mentor' => optional($this->mentor)->name,
+            'major' => $this->major,
+            'institution' => $this->institution,
+            'period' => ($start || $end) ? trim(($start ?: '?') . ' – ' . ($end ?: '?')) : null,
+            'email' => $this->email,
+            'phone_number' => $this->phone_number,
+            'address' => $this->address,
+            'birth_date' => self::idDate($this->birth_date),
+        ];
+
+        $rows = [];
+        foreach ($candidates as $key => $value) {
+            if (! empty($vis[$key]) && filled($value)) {
+                $rows[] = ['k' => $key, 'label' => self::CARD_FIELDS[$key], 'value' => (string) $value];
+            }
+        }
+
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'initials' => $initials ?: '-',
+            'photo' => ($vis['photo'] && $this->profile_photo_path) ? asset('storage/' . $this->profile_photo_path) : null,
+            'rows' => $rows,
+        ];
+    }
 
     public function getRouteKeyName()
     {

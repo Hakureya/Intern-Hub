@@ -64,6 +64,9 @@
                        <i class="mdi mdi-menu"></i>
                    </button>
                </li>
+               <li class="float-left pc-search-li">
+                   @include('includes.people-search')
+               </li>
            </ul>
         </nav>
    </div>

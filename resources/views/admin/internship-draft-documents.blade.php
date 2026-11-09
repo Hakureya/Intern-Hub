@@ -234,7 +234,7 @@
                                         <form method="POST"
                                             action="{{ route('internship-draft-documents.destroy', $item->id) }}"
                                             style="display:inline-block;"
-                                            onsubmit="return confirm('Yakin ingin menghapus dokumen ini?')">
+                                            data-confirm="Yakin ingin menghapus dokumen ini?">
                                             @csrf
                                             @method('DELETE')
                                             <button class="btn btn-danger btn-sm" type="submit">Hapus</button>

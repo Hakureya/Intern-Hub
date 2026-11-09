@@ -1,7 +1,7 @@
 @extends('layouts.master')
 
 @section('css')
-    <link href="{{ URL::asset('css/work-log.css') }}?v=6" rel="stylesheet" type="text/css" />
+    <link href="{{ URL::asset('css/work-log.css') }}?v=8" rel="stylesheet" type="text/css" />
 @endsection
 
 @section('breadcrumb')
@@ -52,24 +52,24 @@
                     <dd>{{ $task->require_attachment ? 'Wajib melampirkan' : 'Opsional' }}</dd>
                 </dl>
 
-                <h4 class="wl-section-title">Deskripsi</h4>
+                <h4 class="wl-sub-title" style="margin-top: 6px;">Deskripsi</h4>
                 <div class="wl-desc">{{ $task->description }}</div>
 
                 @if ($task->reference_file_path || $task->reference_link)
-                    <h4 class="wl-section-title" style="margin-top: 18px;">Lampiran</h4>
+                    <h4 class="wl-sub-title">Referensi tugas</h4>
                     @if ($task->reference_file_path)
-                        <div class="wl-file">
-                            <i class="mdi mdi-paperclip"></i> {{ $task->reference_file_name }}
-                            <span class="wl-file-actions">
-                                <a href="{{ route('work-logs.file.reference', $task) }}" target="_blank">Lihat</a>
-                                <a href="{{ route('work-logs.file.reference', ['task' => $task, 'download' => 1]) }}">Unduh</a>
-                            </span>
+                        <div class="wl-work-item">
+                            <i class="mdi mdi-paperclip wl-work-ic"></i>
+                            <div class="wl-work-name"><a href="{{ route('work-logs.file.reference', $task) }}" target="_blank">{{ $task->reference_file_name }}</a></div>
+                            <a class="wl-work-dl" href="{{ route('work-logs.file.reference', ['task' => $task, 'download' => 1]) }}">Unduh</a>
                         </div>
                     @endif
                     @if ($task->reference_link)
-                        <div class="wl-file" style="margin-top: 6px;">
-                            <i class="mdi mdi-link-variant"></i>
-                            <a href="{{ $task->reference_link }}" target="_blank" rel="noopener noreferrer">{{ \Illuminate\Support\Str::limit($task->reference_link, 60) }}</a>
+                        <div class="wl-work-item">
+                            <i class="mdi mdi-link-variant wl-work-ic"></i>
+                            <div class="wl-work-name">
+                                <a href="{{ $task->reference_link }}" target="_blank" rel="noopener noreferrer">{{ \Illuminate\Support\Str::limit($task->reference_link, 70) }}</a>
+                            </div>
                         </div>
                     @endif
                 @endif
@@ -121,13 +121,13 @@
                                 @empty
                                     <span class="wl-sub">Belum ada lampiran.</span>
                                 @endforelse
-                                @if ($a->proof_note) <div class="wl-note">{{ $a->proof_note }}</div> @endif
+                                @if ($a->proof_note) <div class="wl-note wl-note--blue"><b>Catatan peserta:</b> {{ $a->proof_note }}</div> @endif
                                 @if ($a->submitted_at)
                                     <div class="wl-hint">Diajukan {{ $a->submitted_at->locale('id')->translatedFormat('d M Y H:i') }}</div>
                                 @endif
                             </div>
                             @if ($a->review_note)
-                                <div class="wl-note wl-note--rose">Catatan: {{ $a->review_note }}</div>
+                                <div class="wl-note {{ $a->status === 'sudah' ? 'wl-note--green' : ($a->status === 'belum' ? 'wl-note--rose' : '') }}"><b>Catatan mentor:</b> {{ $a->review_note }}</div>
                             @endif
 
                             <form method="POST" action="{{ route('work-logs.status', ['task' => $task, 'assignee' => $a]) }}" class="wl-status-form">

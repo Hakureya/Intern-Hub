@@ -132,6 +132,8 @@
 .wl-review-form .wl-input { flex: 1 1 200px; }
 .wl-note { background: var(--cs-amber-soft, #fff4d8); border-radius: 10px; padding: 9px 12px; font-size: 12.5px; margin-top: 8px; }
 .wl-note--rose { background: var(--cs-rose-soft, #fae8ed); }
+.wl-note--green { background: var(--cs-green-soft, #edf5d7); }
+.wl-note--blue { background: var(--cs-primary-soft, #e4f2fa); }
 
 /* ---------- Kartu peserta & status (satu kartu) ---------- */
 .wl-pc-names { font: 700 15px var(--cs-display, sans-serif); margin: -4px 0 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }

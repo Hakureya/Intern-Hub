@@ -16,6 +16,12 @@
                           </a>
                       </li>
                       <li class="">
+                          <a href="{{ route('directory.index') }}"
+                              class="waves-effect {{ request()->is('direktori') || request()->is('direktori/*') ? 'mm active' : '' }}">
+                              <i class="ti-id-badge"></i> <span> Direktori Peserta </span>
+                          </a>
+                      </li>
+                      <li class="">
                           <a href="/users"
                               class="waves-effect {{ request()->is('users') || request()->is('users/*') ? 'mm active' : '' }}">
                               <i class="ti-user"></i> <span> {{ __('global.users') }} </span>

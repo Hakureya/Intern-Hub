@@ -122,7 +122,7 @@
                                 </td>
                                 <td>
                                     <form method="POST" action="{{ route('national-holidays.destroy', $holiday->id) }}"
-                                        onsubmit="return confirm('Hapus data ini?');">
+                                        data-confirm="Hapus data ini?">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="btn btn-sm btn-danger">Hapus</button>

@@ -161,7 +161,13 @@ Route::group(['middleware' => ['auth']], function () {
     Route::post('/user/work-logs/{task}/submit', [\App\Http\Controllers\UserWorkTaskController::class, 'submit'])->where('task', '[0-9]+')->name('user.work-logs.submit');
 
     // file lampiran & bukti (akses dicek di controller)
-    Route::get('/work-logs/{task}/reference-file', [\App\Http\Controllers\WorkTaskFileController::class, 'reference'])->where('task', '[0-9]+')->name('work-logs.file.reference');
+    Route::get('/work-logs/reference/{reference}', [\App\Http\Controllers\WorkTaskFileController::class, 'reference'])->where('reference', '[0-9]+')->name('work-logs.file.reference');
+    // ruang chat tugas + riwayat pengeditan (peserta & mentor/admin; akses dicek per tugas)
+    Route::get('/work-logs/{task}/chat', [\App\Http\Controllers\WorkTaskChatController::class, 'index'])->where('task', '[0-9]+')->name('work-logs.chat.index');
+    Route::post('/work-logs/{task}/chat', [\App\Http\Controllers\WorkTaskChatController::class, 'store'])->where('task', '[0-9]+')->middleware('throttle:40,1')->name('work-logs.chat.store');
+    Route::patch('/work-logs/{task}/chat/{message}', [\App\Http\Controllers\WorkTaskChatController::class, 'update'])->where(['task' => '[0-9]+', 'message' => '[0-9]+'])->name('work-logs.chat.update');
+    Route::get('/work-logs/{task}/history', [\App\Http\Controllers\WorkTaskChatController::class, 'history'])->where('task', '[0-9]+')->name('work-logs.history');
+    Route::get('/work-logs/chat-file/{file}', [\App\Http\Controllers\WorkTaskChatController::class, 'file'])->where('file', '[0-9]+')->name('work-logs.chat.file');
     Route::get('/work-logs/attachment/{attachment}', [\App\Http\Controllers\WorkTaskFileController::class, 'attachment'])->where('attachment', '[0-9]+')->name('work-logs.file.attachment');
 
 });

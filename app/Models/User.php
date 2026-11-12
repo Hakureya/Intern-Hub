@@ -51,13 +51,19 @@ class User extends Authenticatable
         'division' => 'Divisi',
         'mentor' => 'Mentor',
         'major' => 'Jurusan',
+        'email' => 'Email',
         'institution' => 'Asal Kampus',
         'period' => 'Periode Magang',
-        'email' => 'Email',
         'phone_number' => 'Nomor Telepon',
         'address' => 'Alamat',
         'birth_date' => 'Tanggal Lahir',
     ];
+
+    /** Jumlah informasi maksimal (di luar foto & nama) yang boleh tampil di kartu. */
+    public const CARD_MAX_INFO = 5;
+
+    /** Lima informasi yang selalu dilihat mentor/admin pada kartu peserta (kosong = "-"). */
+    public const CARD_MENTOR_FIELDS = ['division', 'major', 'email', 'institution', 'period'];
 
     /** Bawaan sebelum peserta mengatur sendiri: hanya foto + divisi yang tampil. */
     public const CARD_DEFAULTS = ['photo' => true, 'division' => true];
@@ -105,8 +111,9 @@ class User extends Authenticatable
     /**
      * Data kartu seperti yang dilihat peserta lain.
      * Isian yang disembunyikan TIDAK ikut dikirim ke browser sama sekali.
+     * $full = true hanya untuk mentor/admin: 5 informasi tetap (divisi, jurusan, email, kampus, periode) + foto; kosong tampil "-".
      */
-    public function directoryCard(): array
+    public function directoryCard(bool $full = false): array
     {
         $vis = $this->cardVisibility();
         $words = array_slice(array_filter(preg_split('/\s+/', trim((string) $this->name))), 0, 2);
@@ -122,19 +129,28 @@ class User extends Authenticatable
             'division' => optional($this->division)->name,
             'mentor' => optional($this->mentor)->name,
             'major' => $this->major,
+            'email' => $this->email,
             'institution' => $this->institution,
             'period' => ($start || $end) ? trim(($start ?: '?') . ' – ' . ($end ?: '?')) : null,
-            'email' => $this->email,
             'phone_number' => $this->phone_number,
             'address' => $this->address,
             'birth_date' => self::idDate($this->birth_date),
         ];
 
         $rows = [];
-        foreach ($candidates as $key => $value) {
-            if (! empty($vis[$key]) && filled($value)) {
-                $rows[] = ['k' => $key, 'label' => self::CARD_FIELDS[$key], 'value' => (string) $value];
+        if ($full) {
+            // Mentor/admin: tepat 5 informasi tetap, tidak mengikuti centang pemilik; yang kosong tampil "-".
+            $vis['photo'] = true;
+            foreach (self::CARD_MENTOR_FIELDS as $key) {
+                $rows[] = ['k' => $key, 'label' => self::CARD_FIELDS[$key], 'value' => filled($candidates[$key]) ? (string) $candidates[$key] : '-'];
             }
+        } else {
+            foreach ($candidates as $key => $value) {
+                if (! empty($vis[$key]) && filled($value)) {
+                    $rows[] = ['k' => $key, 'label' => self::CARD_FIELDS[$key], 'value' => (string) $value];
+                }
+            }
+            $rows = array_slice($rows, 0, self::CARD_MAX_INFO); // pengaman bila data lama melebihi batas
         }
 
         return [

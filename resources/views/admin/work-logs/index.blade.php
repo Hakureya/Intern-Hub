@@ -1,7 +1,7 @@
 @extends('layouts.master')
 
 @section('css')
-    <link href="{{ URL::asset('css/work-log.css') }}?v=7" rel="stylesheet" type="text/css" />
+    <link href="{{ URL::asset('css/work-log.css') }}?v=11" rel="stylesheet" type="text/css" />
 @endsection
 
 @section('breadcrumb')
@@ -75,7 +75,7 @@
                 @endphp
                 <div class="wl-day-head">
                     <b>{{ $day->translatedFormat($day->isCurrentYear() ? 'd M' : 'd M Y') }}</b>
-                    <span>Dibuat {{ $day->isToday() ? 'hari ini' : ($day->isYesterday() ? 'kemarin' : $day->diffForHumans()) }}</span>
+                    <span>{{ $day->isToday() ? 'Hari ini' : ($day->isYesterday() ? 'Kemarin' : ucfirst($day->diffForHumans())) }}</span>
                 </div>
                 @foreach ($groupRows as $row)
                 @php
@@ -100,6 +100,12 @@
                                     Tanpa tenggat
                                 @endif
                             </span>
+                            <?php $lastSubmitted = $task->assignees->whereNotNull('submitted_at')->sortByDesc('submitted_at')->first(); ?>
+                            @if ($lastSubmitted)
+                                <span><i class="mdi mdi-send-check-outline"></i>
+                                    {{ $task->assignees->count() > 1 ? 'Pengajuan terakhir' : 'Diajukan' }} {{ $lastSubmitted->submitted_at->locale('id')->translatedFormat('d M Y') }}
+                                </span>
+                            @endif
                             <span><i class="mdi mdi-account-edit-outline"></i> Dibuat oleh: {{ optional($task->creator)->name ?: '-' }}</span>
                             <span><i class="mdi mdi-account-outline"></i>
                                 {{ $names->take(2)->implode(', ') }}@if ($names->count() > 2) +{{ $names->count() - 2 }} lainnya @endif
@@ -137,5 +143,5 @@
 @endsection
 
 @section('script')
-    <script src="{{ URL::asset('js/work-log.js') }}?v=4"></script>
+    <script src="{{ URL::asset('js/work-log.js') }}?v=10"></script>
 @endsection

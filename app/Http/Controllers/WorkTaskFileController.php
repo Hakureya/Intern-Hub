@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\WorkTask;
 use App\Models\WorkTaskAttachment;
+use App\Models\WorkTaskReference;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -15,11 +16,13 @@ class WorkTaskFileController extends Controller
         $this->middleware('auth');
     }
 
-    public function reference(Request $request, WorkTask $task)
+    public function reference(Request $request, WorkTaskReference $reference)
     {
-        abort_unless($task->isVisibleTo(auth()->user()), 403);
+        $reference->load('task');
+        abort_unless($reference->task && $reference->task->isVisibleTo(auth()->user()), 403);
+        abort_if($reference->isLink(), 404);
 
-        return $this->send($request, $task->reference_file_path, $task->reference_file_name);
+        return $this->send($request, $reference->path, $reference->name);
     }
 
     public function attachment(Request $request, WorkTaskAttachment $attachment)

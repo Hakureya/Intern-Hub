@@ -154,7 +154,7 @@
                         Absen masuk dahulu sebelum absen pulang.
                     </div>
                 @else
-                    <form method="POST" action="{{ route('home.timeout.store') }}" class="action-form">
+                    <form method="POST" action="{{ route('home.timeout.store') }}" class="action-form" id="timeoutForm">
                         @csrf
                         <div class="form-group">
                             <label for="note_time_out">{{ __('global.note_optional') }}</label>
@@ -248,6 +248,44 @@
         }
         tick();
         setInterval(tick, 1000);
+
+        // Konfirmasi saat absen pulang sebelum jam pulang.
+        var timeoutForm = document.getElementById('timeoutForm');
+        if (timeoutForm) {
+            var outAt = @json(\App\Models\Schedule::timeOutShort()).split(':');
+            var confirmed = false;
+
+            timeoutForm.addEventListener('submit', function(e) {
+                if (confirmed) return;
+
+                var now = new Date();
+                var limit = new Date(now);
+                limit.setHours(parseInt(outAt[0], 10), parseInt(outAt[1], 10), 0, 0);
+                if (now >= limit) return; // sudah waktunya pulang, langsung kirim
+
+                e.preventDefault();
+                var message = 'Sekarang belum waktunya pulang (jam pulang ' + outAt.join(':') + ', masih ' +
+                    formatDuration((limit - now) / 1000) + ' lagi).\n' +
+                    'Absen pulang sekarang akan dicatat sebagai pulang lebih cepat.';
+
+                function submitNow() {
+                    confirmed = true;
+                    timeoutForm.submit();
+                }
+
+                if (window.swal) {
+                    swal({
+                        title: 'Pulang lebih awal?',
+                        text: message,
+                        icon: 'warning',
+                        buttons: ['Batal', 'Ya, absen pulang'],
+                        dangerMode: true
+                    }).then(function(ok) { if (ok) submitNow(); });
+                } else if (window.confirm(message + '\n\nLanjutkan?')) {
+                    submitNow();
+                }
+            });
+        }
     })();
 </script>
 @endsection

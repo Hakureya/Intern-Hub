@@ -108,6 +108,14 @@ class ProfileController extends Controller
         foreach (array_keys(\App\Models\User::CARD_FIELDS) as $key) {
             $visibility[$key] = filter_var($cardInput[$key] ?? false, FILTER_VALIDATE_BOOLEAN);
         }
+        $infoCount = count(array_filter($visibility, function ($on, $key) {
+            return $on && $key !== 'photo';
+        }, ARRAY_FILTER_USE_BOTH));
+        if ($infoCount > \App\Models\User::CARD_MAX_INFO) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'card_visibility' => 'Kartu hanya dapat menampilkan maksimal ' . \App\Models\User::CARD_MAX_INFO . ' informasi.',
+            ]);
+        }
         $user->card_visibility = $visibility;
 
         if ($request->hasFile('profile_photo')) {

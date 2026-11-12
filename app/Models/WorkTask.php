@@ -11,6 +11,7 @@ class WorkTask extends Model
         'title',
         'description',
         'deadline',
+        'worked_on',
         'require_attachment',
         'reference_link',
         'reference_file_path',
@@ -21,6 +22,7 @@ class WorkTask extends Model
 
     protected $casts = [
         'deadline' => 'date',
+        'worked_on' => 'date',
         'require_attachment' => 'boolean',
         'is_self' => 'boolean',
     ];
@@ -33,6 +35,16 @@ class WorkTask extends Model
     public function assignees()
     {
         return $this->hasMany(WorkTaskAssignee::class);
+    }
+
+    public function messages()
+    {
+        return $this->hasMany(WorkTaskMessage::class)->orderBy('id');
+    }
+
+    public function references()
+    {
+        return $this->hasMany(WorkTaskReference::class)->orderBy('id');
     }
 
     public function partnerRequests()
@@ -50,6 +62,12 @@ class WorkTask extends Model
             'reviewed_by' => null,
             'review_note' => null,
         ]);
+    }
+
+    /** Tanggal pekerjaan dikerjakan; untuk data lama (kosong) memakai tanggal dibuat. */
+    public function workedDate(): Carbon
+    {
+        return $this->worked_on ?: $this->created_at;
     }
 
     /** Tenggat berlaku sampai akhir hari (23:59). */
@@ -94,7 +112,7 @@ class WorkTask extends Model
         $end = Carbon::createFromFormat('!Y-m', $month)->endOfMonth()->toDateString();
 
         return $query->whereRaw(
-            'COALESCE(work_tasks.deadline, DATE(work_tasks.created_at)) BETWEEN ? AND ?',
+            'COALESCE(work_tasks.deadline, work_tasks.worked_on, DATE(work_tasks.created_at)) BETWEEN ? AND ?',
             [$start, $end]
         );
     }
@@ -201,30 +219,24 @@ class WorkTask extends Model
     }
 
     /**
-     * Data kartu peserta. Peserta hanya melihat nama + divisi;
-     * admin/mentor melihat juga email, jurusan, kampus, periode magang.
+     * Data kartu peserta (dipakai kartu putar people-card).
+     * Peserta melihat hanya informasi yang diizinkan pemilik kartu; mentor/admin melihat 5 informasi lengkap.
      */
     public static function cardPayload(User $person, ?User $viewer = null): array
     {
         $viewer = $viewer ?: auth()->user();
+        $full = $viewer && ($viewer->hasRole('admin') || $viewer->isMentor());
 
-        $payload = [
-            'name' => $person->name,
-            'division' => optional($person->division)->name ?: '-',
-            'initials' => self::initials($person->name),
-            'photo' => $person->profile_photo_path ? asset('storage/' . $person->profile_photo_path) : null,
-            'tone' => abs(crc32((string) $person->name)) % 5,
-            'detail' => false,
-        ];
+        $card = $person->directoryCard($full);
 
-        if ($viewer && ($viewer->hasRole('admin') || $viewer->isMentor())) {
-            $payload['detail'] = true;
-            $payload['email'] = $person->email;
-            $payload['major'] = $person->major ?: '-';
-            $payload['institution'] = $person->institution ?: '-';
-            $payload['period'] = self::period($person);
+        $division = '';
+        foreach ($card['rows'] as $row) {
+            if ($row['k'] === 'division') {
+                $division = $row['value'];
+            }
         }
 
-        return $payload;
+        // 'division' dan 'tone' hanya untuk ikon kecil + tooltip di footer kartu tugas.
+        return $card + ['division' => $division, 'tone' => abs(crc32((string) $person->name)) % 5];
     }
 }

@@ -2,7 +2,8 @@
 
 @section('css')
     <link href="{{ URL::asset('css/cerah-portal.css') }}?v=2" rel="stylesheet" type="text/css" />
-    <link href="{{ URL::asset('css/work-log.css') }}?v=7" rel="stylesheet" type="text/css" />
+    <link href="{{ URL::asset('css/work-log.css') }}?v=11" rel="stylesheet" type="text/css" />
+    <link href="{{ URL::asset('css/work-chat.css') }}?v=2" rel="stylesheet" type="text/css" />
 @endsection
 
 @section('content')
@@ -11,14 +12,19 @@
 <div class="home-wrap">
     <div class="home-shell wl">
         <div class="wl-head">
-            <a href="{{ route('user.work-logs.index', ['month' => optional($task->deadline ?: $task->created_at)->format('Y-m')]) }}" class="wl-btn">
+            <a href="{{ route('user.work-logs.index', ['month' => optional($task->deadline ?: $task->workedDate())->format('Y-m')]) }}" class="wl-btn">
                 <i class="mdi mdi-arrow-left"></i> Kembali
             </a>
-            @if ($canEdit)
-                <a href="{{ route('user.work-logs.edit', $task) }}" class="wl-btn wl-btn--primary"><i class="mdi mdi-pencil-outline"></i> Edit tugas</a>
-            @endif
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button type="button" class="wl-btn" data-wc-history data-wl-open="#wc-history-modal"><i class="mdi mdi-history"></i> Riwayat</button>
+                @if ($canEdit)
+                    <a href="{{ route('user.work-logs.edit', $task) }}" class="wl-btn wl-btn--primary"><i class="mdi mdi-pencil-outline"></i> Edit tugas</a>
+                @endif
+            </div>
         </div>
 
+        <div class="wc-layout">
+        <div class="wc-main">
         <div class="wl-card wl-assign">
             <div class="wl-assign-head">
                 <h3 class="wl-detail-title">{{ $task->title }}</h3>
@@ -37,6 +43,12 @@
                 @else
                     Tanpa tenggat
                 @endif
+                @if ($task->is_self)
+                    <span class="wl-dot">&bull;</span> Dikerjakan pada {{ $task->workedDate()->locale('id')->translatedFormat('d F Y') }}
+                @endif
+                @if ($mine && $mine->submitted_at)
+                    <span class="wl-dot">&bull;</span> Diajukan pada {{ $mine->submitted_at->locale('id')->translatedFormat('d F Y, H:i') }}
+                @endif
                 <span class="wl-dot">&bull;</span> Dibuat {{ $task->created_at->locale('id')->translatedFormat('d F Y, H:i') }}
                 <span class="wl-dot">&bull;</span> Boleh mengumpulkan lebih dari satu lampiran
                 <span class="wl-dot">&bull;</span> Dibuat oleh: {{ $task->is_self ? 'Saya' : (optional($task->creator)->name ?: '-') }}
@@ -46,23 +58,25 @@
             <h4 class="wl-sub-title">Instruksi</h4>
             <div class="wl-desc">{{ $task->description }}</div>
 
-            @if ($task->reference_file_path || $task->reference_link)
+            @if ($task->references->isNotEmpty())
                 <h4 class="wl-sub-title">Referensi Tugas</h4>
-                @if ($task->reference_file_path)
-                    <div class="wl-work-item">
-                        <i class="mdi mdi-paperclip wl-work-ic"></i>
-                        <div class="wl-work-name"><a href="{{ route('work-logs.file.reference', $task) }}" target="_blank">{{ $task->reference_file_name }}</a></div>
-                        <a class="wl-work-dl" href="{{ route('work-logs.file.reference', ['task' => $task, 'download' => 1]) }}">Unduh</a>
-                    </div>
-                @endif
-                @if ($task->reference_link)
-                    <div class="wl-work-item">
-                        <i class="mdi mdi-link-variant wl-work-ic"></i>
-                        <div class="wl-work-name">
-                            <a href="{{ $task->reference_link }}" target="_blank" rel="noopener noreferrer">{{ \Illuminate\Support\Str::limit($task->reference_link, 70) }}</a>
+                @foreach ($task->references as $ref)
+                    @if ($ref->isLink())
+                        <div class="wl-work-item">
+                            <i class="mdi mdi-link-variant wl-work-ic"></i>
+                            <div class="wl-work-name">
+                                <a href="{{ $ref->url }}" target="_blank" rel="noopener noreferrer">{{ $ref->name }}</a>
+                                <small>{{ \Illuminate\Support\Str::limit($ref->url, 60) }}</small>
+                            </div>
                         </div>
-                    </div>
-                @endif
+                    @else
+                        <div class="wl-work-item">
+                            <i class="mdi {{ $ref->icon() }} wl-work-ic"></i>
+                            <div class="wl-work-name"><a href="{{ route('work-logs.file.reference', $ref) }}" target="_blank">{{ $ref->name }}</a></div>
+                            <a class="wl-work-dl" href="{{ route('work-logs.file.reference', ['reference' => $ref, 'download' => 1]) }}">Unduh</a>
+                        </div>
+                    @endif
+                @endforeach
             @endif
 
             @if ($mine)
@@ -134,6 +148,9 @@
 
             @include('includes.work-people', ['people' => $people])
         </div>
+        </div>{{-- .wc-main --}}
+        @include('includes.work-chat', ['task' => $task])
+        </div>{{-- .wc-layout --}}
     </div>
 </div>
 
@@ -166,5 +183,6 @@
 @endsection
 
 @section('script')
-    <script src="{{ URL::asset('js/work-log.js') }}?v=4"></script>
+    <script src="{{ URL::asset('js/work-log.js') }}?v=10"></script>
+    <script src="{{ URL::asset('js/work-chat.js') }}?v=2"></script>
 @endsection

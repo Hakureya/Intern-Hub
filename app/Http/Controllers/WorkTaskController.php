@@ -31,7 +31,7 @@ class WorkTaskController extends Controller
             $userId = 0;
         }
 
-        $tasks = WorkTask::with(['assignees.user.division', 'creator'])
+        $tasks = WorkTask::with(['assignees.user.division', 'assignees.user.mentor', 'creator'])
             ->visibleTo($viewer)
             ->inMonth($month)
             ->when($search !== '', function ($q) use ($search) {
@@ -50,6 +50,7 @@ class WorkTaskController extends Controller
                     $u->where('users.division_id', $divisionId);
                 });
             })
+            ->orderByRaw('COALESCE(work_tasks.worked_on, DATE(work_tasks.created_at)) desc')
             ->orderByDesc('work_tasks.created_at')
             ->orderByDesc('work_tasks.id')
             ->get();
@@ -73,9 +74,9 @@ class WorkTaskController extends Controller
             ];
         });
 
-        // Kartu dikelompokkan per tanggal dibuat (terbaru di atas).
+        // Kartu dikelompokkan per tanggal (tugas mandiri: tanggal dikerjakan, lainnya: tanggal dibuat), terbaru di atas.
         $groups = $rows->groupBy(function ($r) {
-            return $r['task']->created_at->toDateString();
+            return $r['task']->workedDate()->toDateString();
         });
 
         return view('admin.work-logs.index', [
@@ -98,7 +99,7 @@ class WorkTaskController extends Controller
 
         return view('admin.work-logs.form', [
             'task' => null,
-            'participants' => User::peserta()->inScope($viewer)->with('division')->orderByName()->get(),
+            'participants' => User::peserta()->inScope($viewer)->with(['division', 'mentor'])->orderByName()->get(),
             'isMentor' => $viewer->isMentor(),
         ]);
     }
@@ -111,8 +112,12 @@ class WorkTaskController extends Controller
             'title' => 'required|string|max:150',
             'description' => 'required|string|max:5000',
             'deadline' => 'nullable|date|after_or_equal:today',
-            'reference_file' => 'nullable|file|max:10240|mimes:' . self::FILE_MIMES,
-            'reference_link' => 'nullable|url|max:500',
+            'reference_files' => 'nullable|array|max:10',
+            'reference_files.*' => 'file|max:10240|mimes:' . self::FILE_MIMES,
+            'reference_links' => 'nullable|array|max:10',
+            'reference_links.*' => 'nullable|url|max:500',
+            'reference_link_labels' => 'nullable|array',
+            'reference_link_labels.*' => 'nullable|string|max:120',
             'require_attachment' => 'required|in:0,1',
             'participants' => 'required|array|min:1',
             'participants.*' => 'integer',
@@ -120,8 +125,7 @@ class WorkTaskController extends Controller
             'participants.required' => 'Pilih minimal satu peserta magang.',
             'participants.min' => 'Pilih minimal satu peserta magang.',
             'deadline.after_or_equal' => 'Tenggat tidak boleh sebelum hari ini.',
-            'reference_link.url' => 'Tautan lampiran harus diawali http:// atau https://.',
-        ]);
+        ] + $this->referenceMessages());
 
         $ids = array_values(array_unique(array_map('intval', $data['participants'])));
         $allowed = User::peserta()->inScope($viewer)->whereIn('users.id', $ids)->pluck('users.id')->all();
@@ -132,22 +136,20 @@ class WorkTaskController extends Controller
             ]);
         }
 
-        $file = $request->hasFile('reference_file')
-            ? $this->storeWorkFile($request->file('reference_file'), 'reference', 'ref')
-            : null;
+        $storedFiles = $this->storeReferenceFiles((array) $request->file('reference_files', []));
+        $links = $this->pairLinks($data['reference_links'] ?? [], $data['reference_link_labels'] ?? []);
 
-        DB::transaction(function () use ($data, $viewer, $file, $allowed) {
+        DB::transaction(function () use ($data, $viewer, $storedFiles, $links, $allowed) {
             $task = WorkTask::create([
                 'title' => trim($data['title']),
                 'description' => trim($data['description']),
                 'deadline' => $data['deadline'] ?? null,
                 'require_attachment' => (bool) $data['require_attachment'],
-                'reference_link' => $data['reference_link'] ?? null,
-                'reference_file_path' => $file['path'] ?? null,
-                'reference_file_name' => $file['name'] ?? null,
                 'is_self' => false,
                 'created_by' => $viewer->id,
             ]);
+
+            $this->addReferences($task, $storedFiles, $links);
 
             foreach ($allowed as $userId) {
                 WorkTaskAssignee::create([
@@ -163,12 +165,24 @@ class WorkTaskController extends Controller
         return redirect()->route('work-logs.index', ['month' => now()->format('Y-m')]);
     }
 
+    private function referenceMessages(): array
+    {
+        return [
+            'reference_files.max' => 'Maksimal 10 file referensi.',
+            'reference_files.*.max' => 'Ukuran tiap file maksimal 10 MB.',
+            'reference_files.*.mimes' => 'Format file harus pdf, doc, xls, ppt, jpg, png, atau zip.',
+            'reference_files.*.uploaded' => 'File gagal diunggah. Pastikan ukuran tidak melebihi batas server.',
+            'reference_links.max' => 'Maksimal 10 tautan referensi.',
+            'reference_links.*.url' => 'Tautan lampiran harus diawali http:// atau https://.',
+        ];
+    }
+
     public function show(WorkTask $task)
     {
         $viewer = auth()->user();
         abort_unless($task->isVisibleTo($viewer), 403);
 
-        $task->load('creator', 'assignees.attachments');
+        $task->load('creator', 'references', 'assignees.attachments');
         $assignees = $task->assigneesFor($viewer);
 
         return view('admin.work-logs.show', [
@@ -196,7 +210,7 @@ class WorkTaskController extends Controller
 
         return view('admin.work-logs.form', [
             'task' => $task,
-            'participants' => User::peserta()->inScope($viewer)->with('division')->orderByName()->get(),
+            'participants' => User::peserta()->inScope($viewer)->with(['division', 'mentor'])->orderByName()->get(),
             'currentIds' => $task->assigneesFor($viewer)->pluck('user_id')->all(),
             'isMentor' => $viewer->isMentor(),
         ]);
@@ -217,16 +231,21 @@ class WorkTaskController extends Controller
             'title' => 'required|string|max:150',
             'description' => 'required|string|max:5000',
             'deadline' => 'nullable|date',
-            'reference_file' => 'nullable|file|max:10240|mimes:' . self::FILE_MIMES,
-            'reference_link' => 'nullable|url|max:500',
+            'reference_files' => 'nullable|array|max:10',
+            'reference_files.*' => 'file|max:10240|mimes:' . self::FILE_MIMES,
+            'reference_links' => 'nullable|array|max:10',
+            'reference_links.*' => 'nullable|url|max:500',
+            'reference_link_labels' => 'nullable|array',
+            'reference_link_labels.*' => 'nullable|string|max:120',
+            'remove_references' => 'nullable|array',
+            'remove_references.*' => 'integer',
             'require_attachment' => 'required|in:0,1',
-            'remove_reference_file' => 'nullable|boolean',
             'participants' => 'required|array|min:1',
             'participants.*' => 'integer',
         ], [
             'participants.required' => 'Pilih minimal satu peserta magang.',
             'participants.min' => 'Pilih minimal satu peserta magang.',
-        ]);
+        ] + $this->referenceMessages());
 
         // Peserta yang boleh dikelola viewer (mentor: hanya divisinya).
         $allowedIds = User::peserta()->inScope($viewer)->pluck('users.id')->map(function ($id) { return (int) $id; })->all();
@@ -249,24 +268,58 @@ class WorkTaskController extends Controller
             'description' => trim($data['description']),
             'deadline' => $data['deadline'] ?? null,
             'require_attachment' => (bool) $data['require_attachment'],
-            'reference_link' => $data['reference_link'] ?? null,
         ];
 
-        $oldReference = $task->reference_file_path;
+        // Referensi: hapus yang ditandai, tambah file/tautan baru (boleh banyak).
+        $dropRefs = $task->references()->whereIn('id', array_map('intval', $data['remove_references'] ?? []))->get();
+        $dropRefPaths = $dropRefs->pluck('path')->filter()->unique()->all();
+        $storedFiles = $this->storeReferenceFiles((array) $request->file('reference_files', []));
+        $links = $this->pairLinks($data['reference_links'] ?? [], $data['reference_link_labels'] ?? []);
 
-        if ($request->hasFile('reference_file')) {
-            $file = $this->storeWorkFile($request->file('reference_file'), 'reference', 'ref');
-            $update['reference_file_path'] = $file['path'];
-            $update['reference_file_name'] = $file['name'];
-        } elseif ($request->boolean('remove_reference_file')) {
-            $update['reference_file_path'] = null;
-            $update['reference_file_name'] = null;
+        // Catatan perubahan untuk riwayat + ruang chat (dihitung sebelum data diubah).
+        $fmtDate = function ($value) {
+            return $value ? \Carbon\Carbon::parse($value)->locale('id')->translatedFormat('d M Y') : 'Tanpa tenggat';
+        };
+        $changes = [];
+        if ((string) $task->title !== $update['title']) {
+            $changes[] = \App\Support\TaskHistory::change('Judul', $task->title, $update['title']);
+        }
+        if (trim((string) $task->description) !== $update['description']) {
+            $changes[] = \App\Support\TaskHistory::change('Deskripsi', $task->description, $update['description']);
+        }
+        $oldDeadline = optional($task->deadline)->toDateString();
+        $newDeadline = $update['deadline'] ? \Carbon\Carbon::parse($update['deadline'])->toDateString() : null;
+        if ($oldDeadline !== $newDeadline) {
+            $changes[] = \App\Support\TaskHistory::change('Tenggat', $fmtDate($oldDeadline), $fmtDate($newDeadline));
+        }
+        if ((bool) $task->require_attachment !== $update['require_attachment']) {
+            $changes[] = \App\Support\TaskHistory::change('Bukti pengerjaan', $task->require_attachment ? 'Wajib melampirkan' : 'Opsional', $update['require_attachment'] ? 'Wajib melampirkan' : 'Opsional');
+        }
+        $refAdded = array_merge(
+            array_map(function ($f) { return $f['name']; }, $storedFiles),
+            array_map(function ($l) { return $l['label'] ?: $l['url']; }, $links)
+        );
+        $refRemoved = $dropRefs->pluck('name')->all();
+        if ($refAdded || $refRemoved) {
+            $changes[] = \App\Support\TaskHistory::note('Lampiran referensi', trim(
+                ($refAdded ? 'Menambah: ' . implode(', ', $refAdded) . '. ' : '') . ($refRemoved ? 'Menghapus: ' . implode(', ', $refRemoved) . '.' : '')
+            ));
+        }
+        if ($toAdd || $toRemove) {
+            $addedNames = $toAdd ? User::whereIn('id', $toAdd)->pluck('name')->all() : [];
+            $removedNames = $toRemove ? User::whereIn('id', $toRemove)->pluck('name')->all() : [];
+            $changes[] = \App\Support\TaskHistory::note('Peserta', trim(
+                ($addedNames ? 'Menambah: ' . implode(', ', $addedNames) . '. ' : '') . ($removedNames ? 'Mengeluarkan: ' . implode(', ', $removedNames) . '.' : '')
+            ));
         }
 
         $removedPaths = [];
 
-        DB::transaction(function () use ($task, $update, $toAdd, $toRemove, &$removedPaths) {
+        DB::transaction(function () use ($task, $update, $toAdd, $toRemove, $dropRefs, $storedFiles, $links, &$removedPaths) {
             $task->update($update);
+
+            $task->references()->whereIn('id', $dropRefs->pluck('id'))->delete();
+            $this->addReferences($task, $storedFiles, $links);
 
             // Ubah daftar peserta: peserta yang dikeluarkan ikut kehilangan lampirannya.
             if ($toRemove) {
@@ -286,11 +339,13 @@ class WorkTaskController extends Controller
             $task->resetAssigneeStatuses();
         });
 
+        \App\Support\TaskHistory::record($task, $viewer, $changes);
+
         foreach (array_unique($removedPaths) as $path) {
             $this->deleteFileIfUnused($path);
         }
-        if (array_key_exists('reference_file_path', $update)) {
-            $this->deleteReferenceIfUnused($oldReference, $task->id);
+        foreach ($dropRefPaths as $path) {
+            $this->deleteReferenceFileIfUnused($path);
         }
 
         flash()->success('Berhasil', 'Tugas diperbarui. Status seluruh peserta dikembalikan menjadi Belum.');

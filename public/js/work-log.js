@@ -1,82 +1,6 @@
-/* Log Pekerjaan: kartu putar peserta, popup, pemilih peserta. Tanpa dependensi. */
+/* Log Pekerjaan: popup, tab, menu, lampiran banyak file/tautan, pemilih peserta. Kartu putar peserta memakai PeopleCard (people-card.js). */
 (function () {
     'use strict';
-
-    var overlay = null;
-
-    function esc(v) {
-        return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
-            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-        });
-    }
-
-    var ICONS = {
-        code: '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
-        school: '<path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/>',
-        mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="3 7 12 13 21 7"/>',
-        bank: '<path d="M3 10l9-6 9 6"/><path d="M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18"/>',
-        calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'
-    };
-
-    function infoRow(icon, label, value) {
-        return '<li><span class="wl-id-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
-            'stroke-linecap="round" stroke-linejoin="round">' + ICONS[icon] + '</svg></span>' +
-            '<div><small>' + label + '</small><b>' + esc(value) + '</b></div></li>';
-    }
-
-    // Kartu ID: peserta hanya melihat nama + divisi; mentor/admin melihat data lengkap.
-    function frontHtml(p, logo) {
-        var photo = p.photo ? '<img src="' + esc(p.photo) + '" alt="">' : '<span class="wl-id-initials">' + esc(p.initials) + '</span>';
-        var rows = infoRow('code', 'Divisi', p.division);
-        if (p.detail) {
-            rows += infoRow('school', 'Jurusan', p.major) +
-                infoRow('mail', 'Email', p.email) +
-                infoRow('bank', 'Asal Kampus', p.institution) +
-                infoRow('calendar', 'Periode Magang', p.period);
-        }
-        return '<div class="wl-face wl-face--front wl-id">' +
-            '<div class="wl-id-top"><img class="wl-id-logo" src="' + esc(logo) + '" alt="PLN Suku Cadang"><span class="wl-id-badge">Intern</span></div>' +
-            '<div class="wl-id-photo">' + photo + '</div>' +
-            '<div class="wl-id-name"><i>&#10022;</i><span>' + esc(p.name) + '</span><i>&#10022;</i></div>' +
-            '<ul class="wl-id-info">' + rows + '</ul>' +
-            '<div class="wl-id-foot">Learn &middot; Contribute &middot; Grow</div></div>';
-    }
-
-    var settleTimer = null;
-
-    function openCards(people, logo) {
-        if (!overlay) {
-            overlay = document.createElement('div');
-            overlay.className = 'wl-overlay';
-            overlay.innerHTML = '<div class="wl-flip-stage"></div>';
-            document.body.appendChild(overlay);
-        }
-        var stage = overlay.firstChild;
-        stage.innerHTML = '';
-        people.forEach(function (p, i) {
-            var card = document.createElement('div');
-            card.className = 'wl-flip';
-            card.style.setProperty('--wl-delay', (i * 0.18) + 's');
-            card.innerHTML =
-                '<div class="wl-face wl-face--back"><img src="' + esc(logo) + '" alt="PLN Suku Cadang"></div>' +
-                frontHtml(p, logo);
-            stage.appendChild(card);
-        });
-        overlay.classList.remove('is-settled');
-        overlay.classList.add('is-open');
-
-        // Scrollbar baru boleh muncul setelah animasi putar selesai (mencegah kedipan scrollbar).
-        clearTimeout(settleTimer);
-        settleTimer = setTimeout(function () { overlay.classList.add('is-settled'); }, 2600 + people.length * 180 + 150);
-    }
-
-    function closeCards() {
-        if (overlay) {
-            clearTimeout(settleTimer);
-            overlay.classList.remove('is-open', 'is-settled');
-            overlay.firstChild.innerHTML = '';
-        }
-    }
 
     function closeModals() {
         [].forEach.call(document.querySelectorAll('.wl-modal.is-open'), function (m) { m.classList.remove('is-open'); });
@@ -111,13 +35,9 @@
         if (btn) {
             e.preventDefault();
             e.stopPropagation();
-            try { openCards(JSON.parse(btn.getAttribute('data-people') || '[]'), btn.getAttribute('data-logo')); } catch (err) {}
-            return;
-        }
-
-        // klik di luar kartu -> kembali ke halaman
-        if (overlay && overlay.classList.contains('is-open') && !t.closest('.wl-flip')) {
-            closeCards();
+            try {
+                if (window.PeopleCard) { window.PeopleCard.open(JSON.parse(btn.getAttribute('data-people') || '[]'), btn.getAttribute('data-logo')); }
+            } catch (err) {}
             return;
         }
 
@@ -143,12 +63,12 @@
     });
 
     document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') { closeCards(); closeModals(); }
+        if (e.key === 'Escape') { closeModals(); }
     });
 
     // pemilih peserta berbentuk kartu
     function refreshCount(scope) {
-        var n = scope.querySelectorAll('.wl-pcard input:checked').length;
+        var n = scope.querySelectorAll('.wl-pcard input:checked, .pc-pick input:checked').length;
         var out = scope.querySelector('[data-wl-count]');
         if (out) { out.textContent = n + ' dipilih'; }
     }
@@ -161,8 +81,8 @@
             input.form.submit();
             return;
         }
-        if (input.matches && input.matches('.wl-pcard input')) {
-            input.closest('.wl-pcard').classList.toggle('is-selected', input.checked);
+        if (input.matches && input.matches('.wl-pcard input, .pc-pick input')) {
+            input.closest('.wl-pcard, .pc-pick').classList.toggle('is-selected', input.checked);
             refreshCount(input.closest('[data-wl-picker]') || document);
         }
     });
@@ -172,7 +92,7 @@
         if (box.matches && box.matches('[data-wl-psearch]')) {
             var q = box.value.trim().toLowerCase();
             var scope = box.closest('[data-wl-picker]') || document;
-            [].forEach.call(scope.querySelectorAll('.wl-pcard'), function (c) {
+            [].forEach.call(scope.querySelectorAll('.wl-pcard, .pc-pick'), function (c) {
                 c.classList.toggle('is-hidden', q !== '' && (c.getAttribute('data-search') || '').indexOf(q) === -1);
             });
         }
@@ -199,8 +119,136 @@
     }
     setInterval(tickCountdown, 30000);
 
+    // Lampiran pada form tugas: banyak file dan banyak tautan lewat menu "Lampirkan", dikirim bersama form.
+    // Atribut pada root [data-wl-attach]:
+    //   data-wl-link-name / data-wl-label-name : nama field tautan & nama tautan (dikirim sebagai name[])
+    //   data-wl-remove-name                    : nama field id lampiran lama yang dihapus (mode edit)
+    //   data-wl-existing  (JSON)               : lampiran lama [{id,type,name,url}]
+    //   data-wl-links     (JSON)               : tautan awal [{url,label}] (mis. setelah validasi gagal)
+    function initAttach(root) {
+        var input = root.querySelector('[data-wl-attach-files]');
+        var out = root.querySelector('[data-wl-attach-out]');
+        var list = root.querySelector('[data-wl-attach-list]');
+        var modal = document.querySelector(root.getAttribute('data-wl-attach-modal') || '#none');
+        var mUrl = modal && modal.querySelector('[data-wl-modal-url]');
+        var mLabel = modal && modal.querySelector('[data-wl-modal-label]');
+        var mAdd = modal && modal.querySelector('[data-wl-modal-add]');
+        var linkName = root.getAttribute('data-wl-link-name') || 'link_urls';
+        var labelName = root.getAttribute('data-wl-label-name') || 'link_labels';
+        var removeName = root.getAttribute('data-wl-remove-name');
+        var files = [];
+        var links = [];
+        var existing = [];
+        var canMerge = typeof DataTransfer !== 'undefined';
+        if (!input || !out || !list) { return; }
+
+        function parse(attr) { try { return JSON.parse(root.getAttribute(attr) || '[]') || []; } catch (err) { return []; } }
+        links = parse('data-wl-links').filter(function (l) { return l && l.url; });
+        existing = parse('data-wl-existing').map(function (x) { x.removed = false; return x; });
+
+        function esc(v) {
+            return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+            });
+        }
+        function size(b) { return b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; }
+
+        function sync() {
+            if (!canMerge) { return; }
+            try {
+                var dt = new DataTransfer();
+                files.forEach(function (f) { dt.items.add(f); });
+                input.files = dt.files;
+            } catch (err) { canMerge = false; }
+        }
+
+        function chip(icon, text, extra, key, href) {
+            var label = href
+                ? '<a class="t" href="' + esc(href) + '" target="_blank" rel="noopener" title="' + esc(text) + '">' + esc(text) + '</a>'
+                : '<span class="t" title="' + esc(text) + '">' + esc(text) + '</span>';
+            return '<span class="wl-attach-chip"><i class="mdi ' + icon + '"></i>' + label +
+                (extra ? '<small>' + esc(extra) + '</small>' : '') +
+                '<button type="button" data-wl-rm="' + key + '" aria-label="Hapus lampiran">&times;</button></span>';
+        }
+
+        function render() {
+            var html = '';
+            existing.forEach(function (x) {
+                if (!x.removed) { html += chip(x.type === 'link' ? 'mdi-link-variant' : 'mdi-paperclip', x.name, 'tersimpan', 'x:' + x.id, x.url); }
+            });
+            files.forEach(function (f, i) { html += chip('mdi-paperclip', f.name, size(f.size), 'f:' + i); });
+            links.forEach(function (l, i) { html += chip('mdi-link-variant', l.label || l.url, '', 'l:' + i); });
+            list.innerHTML = html;
+
+            // input tersembunyi yang ikut terkirim bersama form
+            var hidden = '';
+            links.forEach(function (l) {
+                hidden += '<input type="hidden" name="' + esc(linkName) + '[]" value="' + esc(l.url) + '">' +
+                    '<input type="hidden" name="' + esc(labelName) + '[]" value="' + esc(l.label || '') + '">';
+            });
+            if (removeName) {
+                existing.forEach(function (x) {
+                    if (x.removed) { hidden += '<input type="hidden" name="' + esc(removeName) + '[]" value="' + esc(x.id) + '">'; }
+                });
+            }
+            out.innerHTML = hidden;
+        }
+
+        input.addEventListener('change', function () {
+            var picked = [].slice.call(input.files);
+            if (canMerge) {
+                picked.forEach(function (f) {
+                    var dup = files.some(function (x) { return x.name === f.name && x.size === f.size && x.lastModified === f.lastModified; });
+                    if (!dup) { files.push(f); }
+                });
+                sync();
+            } else {
+                files = picked;
+            }
+            render();
+        });
+
+        list.addEventListener('click', function (e) {
+            var b = e.target.closest('[data-wl-rm]');
+            if (!b) { return; }
+            var key = b.getAttribute('data-wl-rm');
+            var n = key.slice(2);
+            if (key.charAt(0) === 'l') { links.splice(parseInt(n, 10), 1); }
+            else if (key.charAt(0) === 'x') { existing.forEach(function (x) { if (String(x.id) === n) { x.removed = true; } }); }
+            else if (canMerge) { files.splice(parseInt(n, 10), 1); sync(); }
+            else { files = []; input.value = ''; }
+            render();
+        });
+
+        if (modal && mUrl && mAdd) {
+            root.addEventListener('click', function (e) {
+                var o = e.target.closest('[data-wl-open]');
+                if (o && o.getAttribute('data-wl-open') === '#' + modal.id) {
+                    mUrl.value = '';
+                    if (mLabel) { mLabel.value = ''; }
+                    setTimeout(function () { mUrl.focus(); }, 50);
+                }
+            });
+            mAdd.addEventListener('click', function () {
+                var u = mUrl.value.trim();
+                if (!u || !mUrl.checkValidity()) { if (mUrl.reportValidity) { mUrl.reportValidity(); } return; }
+                if (!links.some(function (l) { return l.url === u; })) {
+                    links.push({ url: u, label: mLabel ? mLabel.value.trim() : '' });
+                }
+                render();
+                modal.classList.remove('is-open');
+            });
+            [mUrl, mLabel].filter(Boolean).forEach(function (el) {
+                el.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); mAdd.click(); } });
+            });
+        }
+
+        render();
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         tickCountdown();
+        [].forEach.call(document.querySelectorAll('[data-wl-attach]'), initAttach);
         [].forEach.call(document.querySelectorAll('[data-wl-picker]'), refreshCount);
     });
 })();

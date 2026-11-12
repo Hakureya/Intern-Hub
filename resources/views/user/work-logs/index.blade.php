@@ -2,7 +2,7 @@
 
 @section('css')
     <link href="{{ URL::asset('css/cerah-portal.css') }}?v=2" rel="stylesheet" type="text/css" />
-    <link href="{{ URL::asset('css/work-log.css') }}?v=7" rel="stylesheet" type="text/css" />
+    <link href="{{ URL::asset('css/work-log.css') }}?v=11" rel="stylesheet" type="text/css" />
 @endsection
 
 @section('content')
@@ -54,8 +54,17 @@
                         <h4 class="wl-row-title">{{ $task->title }}</h4>
                         <div class="wl-row-meta">
                             <span><i class="mdi mdi-calendar-clock"></i>
-                                {{ $task->deadline ? 'Tenggat ' . $task->deadline->locale('id')->translatedFormat('d M Y') : 'Tanpa tenggat' }}
+                                @if ($task->deadline)
+                                    Tenggat {{ $task->deadline->locale('id')->translatedFormat('d M Y') }}
+                                @elseif ($task->is_self)
+                                    Dikerjakan pada {{ $task->workedDate()->locale('id')->translatedFormat('d M Y') }}
+                                @else
+                                    Tanpa tenggat
+                                @endif
                             </span>
+                            @if ($mine && $mine->submitted_at)
+                                <span><i class="mdi mdi-send-check-outline"></i> Diajukan {{ $mine->submitted_at->locale('id')->translatedFormat('d M Y') }}</span>
+                            @endif
                             @if ($task->deadline && !$task->isPastDeadline() && optional($mine)->status !== 'sudah')
                                 @include('includes.work-countdown', ['task' => $task])
                             @endif
@@ -140,5 +149,5 @@
 @endsection
 
 @section('script')
-    <script src="{{ URL::asset('js/work-log.js') }}?v=4"></script>
+    <script src="{{ URL::asset('js/work-log.js') }}?v=10"></script>
 @endsection

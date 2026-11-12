@@ -35,10 +35,10 @@ class UserWorkTaskController extends Controller
         $status = (string) $request->input('status', '');
         $status = in_array($status, ['belum', 'menunggu', 'sudah'], true) ? $status : '';
 
-        $tasks = WorkTask::with(['assignees.user.division', 'creator'])
+        $tasks = WorkTask::with(['assignees.user.division', 'assignees.user.mentor', 'creator'])
             ->visibleTo($me)
             ->inMonth($month)
-            ->orderByRaw('COALESCE(work_tasks.deadline, DATE(work_tasks.created_at)) desc')
+            ->orderByRaw('COALESCE(work_tasks.deadline, work_tasks.worked_on, DATE(work_tasks.created_at)) desc')
             ->orderByDesc('work_tasks.id')
             ->get();
 
@@ -88,6 +88,31 @@ class UserWorkTaskController extends Controller
         ]);
     }
 
+    /** "Dikerjakan pada": tidak boleh di masa depan dan tidak sebelum periode magang dimulai. */
+    private function workedOnRules($user): array
+    {
+        $rules = ['required', 'date', 'before_or_equal:today'];
+
+        if ($user->internship_start_date) {
+            $start = \Carbon\Carbon::parse($user->internship_start_date);
+            if ($start->lte(now())) {
+                $rules[] = 'after_or_equal:' . $start->toDateString();
+            }
+        }
+
+        return $rules;
+    }
+
+    private function workedOnMessages(): array
+    {
+        return [
+            'worked_on.required' => 'Tanggal dikerjakan wajib diisi.',
+            'worked_on.date' => 'Tanggal dikerjakan tidak valid.',
+            'worked_on.before_or_equal' => 'Tanggal dikerjakan tidak boleh melewati hari ini.',
+            'worked_on.after_or_equal' => 'Tanggal dikerjakan tidak boleh sebelum periode magang dimulai.',
+        ];
+    }
+
     public function store(Request $request)
     {
         $me = auth()->user();
@@ -95,13 +120,19 @@ class UserWorkTaskController extends Controller
         $data = $request->validate(array_merge([
             'title' => 'required|string|max:150',
             'description' => 'required|string|max:5000',
+            'worked_on' => $this->workedOnRules($me),
             'partners' => 'nullable|array',
             'partners.*' => 'integer',
-        ], $this->attachmentRules()), $this->attachmentMessages());
+            'link_urls' => 'nullable|array|max:10',
+            'link_urls.*' => 'nullable|url|max:500',
+            'link_labels' => 'nullable|array',
+            'link_labels.*' => 'nullable|string|max:120',
+        ], $this->attachmentRules()), array_merge($this->attachmentMessages(), $this->workedOnMessages(), [
+            'link_urls.max' => 'Maksimal 10 tautan.',
+            'link_urls.*.url' => 'Tautan harus diawali http:// atau https://.',
+        ]));
 
-        if (! $request->hasFile('files') && ! $request->filled('link_url')) {
-            return back()->withInput()->withErrors(['files' => 'Lampirkan minimal satu file atau tautan sebagai bukti pengerjaan.']);
-        }
+        // Lampiran bukti bersifat opsional pada tugas mandiri.
 
         $partnerIds = array_values(array_unique(array_map('intval', $data['partners'] ?? [])));
         $allowed = $this->partnerCandidates($me)->pluck('id')->all();
@@ -110,12 +141,15 @@ class UserWorkTaskController extends Controller
             return back()->withInput()->withErrors(['partners' => 'Teman yang dipilih harus satu divisi dengan Anda.']);
         }
 
-        DB::transaction(function () use ($data, $me, $request, $partnerIds) {
+        $links = $this->pairLinks($data['link_urls'] ?? [], $data['link_labels'] ?? []);
+
+        DB::transaction(function () use ($data, $me, $request, $partnerIds, $links) {
             $task = WorkTask::create([
                 'title' => trim($data['title']),
                 'description' => trim($data['description']),
                 'deadline' => null,
-                'require_attachment' => true,
+                'worked_on' => $data['worked_on'],
+                'require_attachment' => false,
                 'is_self' => true,
                 'created_by' => $me->id,
             ]);
@@ -132,7 +166,8 @@ class UserWorkTaskController extends Controller
                 $assignee,
                 (array) $request->file('files', []),
                 $request->input('link_url') ?: null,
-                $request->input('link_label') ?: null
+                $request->input('link_label') ?: null,
+                $links
             );
 
             foreach ($partnerIds as $partnerId) {
@@ -156,7 +191,7 @@ class UserWorkTaskController extends Controller
         $me = auth()->user();
         abort_unless($task->isVisibleTo($me), 403);
 
-        $task->load('creator', 'assignees.user.division', 'assignees.attachments');
+        $task->load('creator', 'references', 'assignees.user.division', 'assignees.user.mentor', 'assignees.attachments');
         $mine = $task->assignees->firstWhere('user_id', $me->id);
 
         return view('user.work-logs.show', [
@@ -198,15 +233,38 @@ class UserWorkTaskController extends Controller
             return redirect()->route('user.work-logs.show', $task);
         }
 
-        $data = $request->validate([
+        $rules = [
             'title' => 'required|string|max:150',
             'description' => 'required|string|max:5000',
-        ]);
+        ];
+        if ($task->is_self) {
+            $rules['worked_on'] = $this->workedOnRules($me);
+        }
+        $data = $request->validate($rules, $this->workedOnMessages());
+
+        // Catatan perubahan untuk riwayat + ruang chat (dihitung sebelum data diubah).
+        $changes = [];
+        if ((string) $task->title !== trim($data['title'])) {
+            $changes[] = \App\Support\TaskHistory::change('Judul', $task->title, trim($data['title']));
+        }
+        if (trim((string) $task->description) !== trim($data['description'])) {
+            $changes[] = \App\Support\TaskHistory::change('Deskripsi', $task->description, trim($data['description']));
+        }
+        if (isset($data['worked_on'])) {
+            $oldWorked = $task->workedDate()->toDateString();
+            $newWorked = \Carbon\Carbon::parse($data['worked_on'])->toDateString();
+            if ($oldWorked !== $newWorked) {
+                $fmt = function ($d) { return \Carbon\Carbon::parse($d)->locale('id')->translatedFormat('d M Y'); };
+                $changes[] = \App\Support\TaskHistory::change('Dikerjakan pada', $fmt($oldWorked), $fmt($newWorked));
+            }
+        }
 
         $task->update([
             'title' => trim($data['title']),
             'description' => trim($data['description']),
-        ]);
+        ] + (isset($data['worked_on']) ? ['worked_on' => $data['worked_on']] : []));
+
+        \App\Support\TaskHistory::record($task, $me, $changes);
 
         // Setiap pengeditan: status kembali "belum". Lampiran tetap tersimpan.
         $task->resetAssigneeStatuses();
@@ -411,7 +469,7 @@ class UserWorkTaskController extends Controller
             ->where(function ($q) {
                 $q->whereNull('is_active')->orWhere('is_active', 1);
             })
-            ->with('division')
+            ->with(['division', 'mentor'])
             ->orderByName()
             ->get();
     }

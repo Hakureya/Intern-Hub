@@ -12,7 +12,7 @@
                     @else
                         {{ $p['initials'] }}
                     @endif
-                    <span class="wl-tip"><span class="wl-tip-line"><b>{{ $p['name'] }}</b><em>{{ $p['division'] }}</em></span></span>
+                    <span class="wl-tip"><span class="wl-tip-line"><b>{{ $p['name'] }}</b>@if (!empty($p['division']))<em>{{ $p['division'] }}</em>@endif</span></span>
                 </button>
             @endforeach
             @if (count($people) > 6)

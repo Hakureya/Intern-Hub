@@ -19,9 +19,9 @@
         { k: 'division', label: 'Divisi', icon: 'code' },
         { k: 'mentor', label: 'Mentor', icon: 'user' },
         { k: 'major', label: 'Jurusan', icon: 'school' },
+        { k: 'email', label: 'Email', icon: 'mail' },
         { k: 'institution', label: 'Asal Kampus', icon: 'bank' },
         { k: 'period', label: 'Periode Magang', icon: 'calendar' },
-        { k: 'email', label: 'Email', icon: 'mail' },
         { k: 'phone_number', label: 'Nomor Telepon', icon: 'phone' },
         { k: 'address', label: 'Alamat', icon: 'pin' },
         { k: 'birth_date', label: 'Tanggal Lahir', icon: 'cake' }
@@ -67,14 +67,21 @@
             '<div class="pc-id-foot">Learn &middot; Contribute &middot; Grow</div></div>';
     }
 
-    /* ---------- Overlay: kartu berputar lalu berhenti ---------- */
+    /* ---------- Overlay: kartu berputar lalu berhenti (satu kartu atau beberapa sekaligus) ---------- */
     var overlay = null;
+    var settleTimer = null;
 
     function closeCard() {
-        if (overlay) { overlay.classList.remove('is-open'); overlay.firstChild.innerHTML = ''; }
+        if (overlay) {
+            clearTimeout(settleTimer);
+            overlay.classList.remove('is-open', 'is-settled');
+            overlay.firstChild.innerHTML = '';
+        }
     }
 
-    function openCard(p, logo) {
+    function openCard(list, logo) {
+        var people = Array.isArray(list) ? list : [list];
+        if (!people.length) { return; }
         if (!overlay) {
             overlay = document.createElement('div');
             overlay.className = 'pc-overlay';
@@ -87,11 +94,17 @@
                 if (e.key === 'Escape') { closeCard(); }
             });
         }
-        var stage = overlay.firstChild;
-        stage.innerHTML = '<div class="pc-fit"><div class="pc-flip"><div class="pc-back"><img src="' + esc(logo) + '" alt="PLN Suku Cadang"></div>' + cardHtml(p, logo) + '</div></div>';
-        overlay.classList.remove('is-open');
+        var back = '<div class="pc-back"><img src="' + esc(logo) + '" alt="PLN Suku Cadang"></div>';
+        overlay.firstChild.innerHTML = people.map(function (p, i) {
+            return '<div class="pc-fit"><div class="pc-flip" style="--pc-delay:' + (i * 0.18) + 's">' + back + cardHtml(p, logo) + '</div></div>';
+        }).join('');
+
+        clearTimeout(settleTimer);
+        overlay.classList.remove('is-open', 'is-settled');
         void overlay.offsetWidth; // mulai ulang animasi
         overlay.classList.add('is-open');
+        // gulir baru aktif setelah animasi selesai (mencegah scrollbar berkedip saat kartu berputar)
+        settleTimer = setTimeout(function () { overlay.classList.add('is-settled'); }, 2600 + people.length * 180 + 150);
     }
 
     function getJson(url, signal) {
@@ -236,7 +249,68 @@
         load(true);
     }
 
+    /* ---------- Pemilih rekan di Log Pekerjaan: kartu + animasi naik sebelum kirim ---------- */
+    function initPicker(grid) {
+        var logo = grid.getAttribute('data-logo') || cfg.logo;
+        var picks = [].slice.call(grid.querySelectorAll('.pc-pick'));
+
+        picks.forEach(function (label) {
+            try {
+                var person = JSON.parse(label.getAttribute('data-person'));
+                label.querySelector('.pc-pick-card').innerHTML = cardHtml(person, logo);
+                // pencarian hanya mencakup yang tampil di kartu (isian tersembunyi tidak bisa ditebak lewat pencarian)
+                label.setAttribute('data-search', [person.name].concat(person.rows.map(function (r) { return r.value; })).join(' ').toLowerCase());
+            } catch (err) { /* biarkan tampilan cadangan (nama saja) */ }
+        });
+
+        var form = grid.closest('form');
+        if (!form) { return; }
+        var sending = false;
+
+        form.addEventListener('submit', function (e) {
+            if (sending) { e.preventDefault(); return; }
+
+            var chosen = picks.filter(function (l) { return l.querySelector('input').checked; });
+            var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (!chosen.length || reduce || !Element.prototype.animate) { return; } // kirim biasa
+
+            // isian wajib belum lengkap: biarkan browser menampilkan pesannya
+            if (form.checkValidity && !form.checkValidity()) { return; }
+
+            e.preventDefault();
+            sending = true;
+            [].forEach.call(form.querySelectorAll('button[type=submit]'), function (b) { b.disabled = true; });
+
+            var finished = 0;
+            function done() {
+                finished++;
+                if (finished === chosen.length) { form.submit(); } // notifikasi "Berhasil" muncul di halaman berikutnya
+            }
+
+            chosen.forEach(function (label, i) {
+                var card = label.querySelector('.pc-id');
+                var r = card.getBoundingClientRect();
+                var fly = document.createElement('div');
+                fly.className = 'pc-fly';
+                fly.style.cssText = 'left:' + r.left + 'px;top:' + r.top + 'px;width:' + r.width + 'px;height:' + r.height + 'px;';
+                fly.appendChild(card.cloneNode(true));
+                document.body.appendChild(fly);
+                label.classList.add('is-flown');
+
+                var rise = -(r.bottom + 80);
+                var anim = fly.animate([
+                    { transform: 'translateY(0) scale(1)', opacity: 1, offset: 0 },
+                    { transform: 'translateY(12px) scale(1.04)', opacity: 1, offset: 0.18 },
+                    { transform: 'translateY(' + rise + 'px) scale(.82)', opacity: 0.1, offset: 1 }
+                ], { duration: 950, delay: i * 110, easing: 'cubic-bezier(.5,0,.75,.4)', fill: 'both' });
+                anim.onfinish = done;
+                anim.oncancel = done;
+            });
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
+        [].forEach.call(document.querySelectorAll('[data-pc-pick]'), initPicker);
         var navForm = document.querySelector('form.pc-search[data-search-url]');
         if (navForm) {
             cfg.logo = navForm.getAttribute('data-logo') || '';

@@ -45,16 +45,17 @@
 .pc-tile .pc-id { aspect-ratio: 278 / 392; }
 
 /* ---------- Overlay + animasi putar lalu berhenti ---------- */
-.pc-overlay { position: fixed; inset: 0; z-index: 2100; display: none; align-items: center; justify-content: center; padding: 20px; overflow-y: auto;
+.pc-overlay { position: fixed; inset: 0; z-index: 2100; display: none; align-items: center; justify-content: center; padding: 20px; overflow: hidden;
     background: rgba(15, 42, 67, .58); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
 .pc-overlay.is-open { display: flex; animation: pc-fade .25s ease both; }
 @keyframes pc-fade { from { opacity: 0; } to { opacity: 1; } }
-.pc-stage { margin: auto; padding: 14px; }
+.pc-overlay.is-settled { overflow-y: auto; } /* gulir hanya aktif setelah animasi selesai (jika kartu banyak) */
+.pc-stage { display: flex; flex-wrap: wrap; gap: 26px; justify-content: center; align-items: center; margin: auto; padding: 14px; }
 .pc-fit { container-type: inline-size; width: min(300px, 80vw); perspective: 1500px; }
 /* pembungkus kartu: ukuran isi (teks, logo, foto) mengikuti lebar pembungkus lewat satuan cqw */
 .pc-fit--profile { max-width: 300px; width: 100%; margin: 0 auto; perspective: none; }
 .pc-flip { position: relative; width: 100%; transform-style: preserve-3d; -webkit-transform-style: preserve-3d;
-    animation: pc-spin 2.6s cubic-bezier(.3, .7, .25, 1) both; }
+    animation: pc-spin 2.6s cubic-bezier(.3, .7, .25, 1) both; animation-delay: var(--pc-delay, 0s); }
 .pc-flip .pc-id { -webkit-backface-visibility: hidden; backface-visibility: hidden; box-shadow: 0 22px 50px rgba(0, 0, 0, .4); }
 .pc-back { position: absolute; inset: 0; transform: rotateY(180deg); -webkit-backface-visibility: hidden; backface-visibility: hidden;
     border-radius: 7.2cqw; overflow: hidden; display: flex; align-items: center; justify-content: center; box-shadow: 0 22px 50px rgba(0, 0, 0, .4);
@@ -97,6 +98,26 @@
 /* penyesuaian tata letak navbar admin (tema Veltrix) */
 .pc-search-li { display: flex; align-items: center; height: 70px; margin-left: 6px; }
 
+/* ---------- Pemilih rekan (Log Pekerjaan > Dikerjakan bersama): kartu tanpa animasi putar ---------- */
+.pc-pick-grid { display: grid; grid-template-columns: repeat(auto-fill, 200px); gap: 18px; justify-content: start; align-items: start; }
+.pc-pick { position: relative; display: block; container-type: inline-size; cursor: pointer; border-radius: 16px; transition: transform .18s ease, filter .18s ease; }
+.pc-pick input { position: absolute; opacity: 0; pointer-events: none; }
+.pc-pick-card { display: block; border-radius: 16px; }
+.pc-pick-fallback { display: block; padding: 20px; font-weight: 700; }
+.pc-pick:hover { transform: translateY(-3px); }
+.pc-pick:not(.is-selected) .pc-id { filter: saturate(.8); }
+.pc-pick.is-selected { transform: translateY(-4px); }
+.pc-pick.is-selected .pc-id { filter: none; box-shadow: 0 0 0 3px #fff, 0 0 0 6px #1b6aa8, 0 14px 30px rgba(27, 106, 168, .35); }
+.pc-pick.is-selected::after { content: "\2713"; position: absolute; z-index: 3; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; background: #fff; color: #1b6aa8; font: 800 15px/1 sans-serif; box-shadow: 0 2px 8px rgba(0, 0, 0, .3); }
+.pc-pick input:focus-visible + .pc-pick-card .pc-id { box-shadow: 0 0 0 3px #fff, 0 0 0 6px #1b6aa8; }
+/* kartu pilihan yang melayang naik sebelum form dikirim */
+.pc-fly { position: fixed; z-index: 2200; margin: 0; pointer-events: none; container-type: inline-size; will-change: transform, opacity; }
+.pc-pick.is-flown { visibility: hidden; }
+.pc-pick.is-hidden { display: none; }
+.pc-pick .pc-id { aspect-ratio: 278 / 392; }
+@media (max-width: 520px) { .pc-pick-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; } }
+
 /* ---------- Halaman Direktori ---------- */
 .pc-dir-tools { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 18px; }
 .pc-dir-tools .pc-search { flex: 1 1 280px; width: auto; max-width: 420px; }
@@ -113,6 +134,9 @@
 .pfc--id { padding: 18px 16px 20px; }
 .pfc--id .pc-id { width: 100%; }
 .pfc-preview-note { margin: 12px 0 14px; font-size: 12px; color: #6b7c8c; text-align: center; }
+.pfc-limit { margin: -6px 0 12px; text-align: center; font-size: 12px; font-weight: 600; color: #5b6f86; }
+.pfc-limit.is-full { color: #b45309; }
+.pc-show input:disabled { cursor: not-allowed; }
 .pfc-opts { display: grid; gap: 8px; margin: 16px 0 0; padding-top: 14px; border-top: 1px solid #e3ebf1; text-align: left; }
 .pc-check { display: flex; align-items: flex-start; gap: 8px; margin: 0; font-size: 13px; font-weight: 600; color: #2d3b48; cursor: pointer; }
 .pc-check input { margin-top: 3px; flex: none; }
@@ -129,5 +153,5 @@
 
 @media (prefers-reduced-motion: reduce) {
     .pc-flip { animation: none; }
-    .pc-tile { transition: none; }
+    .pc-tile, .pc-pick { transition: none; }
 }

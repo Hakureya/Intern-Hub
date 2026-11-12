@@ -279,6 +279,7 @@
     </div>
     </div>
     <p class="pfc-preview-note">Pratinjau langsung: begini kartumu terlihat oleh peserta lain.</p>
+    <p class="pfc-limit" id="pcLimit" aria-live="polite">Informasi di kartu: <b>0</b>/{{ \App\Models\User::CARD_MAX_INFO }}</p>
 
     <div class="pfc-actions">
         <button type="button" class="pfc-btn" id="pfcUpload">Unggah foto</button>
@@ -705,6 +706,34 @@
             offInitials.textContent = PeopleCard.initialsOf(text('name'));
         }
 
+        // Batas jumlah informasi di kartu (foto tidak dihitung; centang periode mulai & selesai dihitung satu).
+        var MAX = @json(\App\Models\User::CARD_MAX_INFO);
+        var limitEl = document.getElementById('pcLimit');
+
+        function checkedKeys() {
+            var keys = [];
+            checks.forEach(function(c) {
+                var k = c.getAttribute('data-pc-show');
+                if (k !== 'photo' && c.checked && keys.indexOf(k) === -1) keys.push(k);
+            });
+            return keys;
+        }
+
+        function applyLimit() {
+            var n = checkedKeys().length;
+            checks.forEach(function(c) {
+                var k = c.getAttribute('data-pc-show');
+                if (k === 'photo') return;
+                // yang belum dicentang dikunci saat batas tercapai
+                c.disabled = (!c.checked && n >= MAX);
+                if (c.parentNode) c.parentNode.style.opacity = c.disabled ? '.5' : '';
+            });
+            if (limitEl) {
+                limitEl.querySelector('b').textContent = n;
+                limitEl.classList.toggle('is-full', n >= MAX);
+            }
+        }
+
         // Dua centang periode (mulai & selesai) selalu sama.
         checks.forEach(function(c) {
             c.addEventListener('change', function() {
@@ -712,9 +741,11 @@
                 checks.forEach(function(o) {
                     if (o !== c && o.getAttribute('data-pc-show') === key) o.checked = c.checked;
                 });
+                applyLimit();
                 build();
             });
         });
+        applyLimit();
 
         if (form) {
             form.addEventListener('input', build);

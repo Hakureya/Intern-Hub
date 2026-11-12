@@ -1,7 +1,8 @@
 @extends('layouts.master')
 
 @section('css')
-    <link href="{{ URL::asset('css/work-log.css') }}?v=8" rel="stylesheet" type="text/css" />
+    <link href="{{ URL::asset('css/work-log.css') }}?v=11" rel="stylesheet" type="text/css" />
+    <link href="{{ URL::asset('css/work-chat.css') }}?v=2" rel="stylesheet" type="text/css" />
 @endsection
 
 @section('breadcrumb')
@@ -18,14 +19,19 @@
 @section('content')
     <div class="wl">
         <div class="wl-head">
-            <a href="{{ route('work-logs.index', ['month' => optional($task->deadline ?: $task->created_at)->format('Y-m')]) }}" class="wl-btn">
+            <a href="{{ route('work-logs.index', ['month' => optional($task->deadline ?: $task->workedDate())->format('Y-m')]) }}" class="wl-btn">
                 <i class="mdi mdi-arrow-left"></i> Kembali
             </a>
-            @if ($canEdit)
-                <a href="{{ route('work-logs.edit', $task) }}" class="wl-btn wl-btn--primary"><i class="mdi mdi-pencil-outline"></i> Edit tugas</a>
-            @endif
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button type="button" class="wl-btn" data-wc-history data-wl-open="#wc-history-modal"><i class="mdi mdi-history"></i> Riwayat</button>
+                @if ($canEdit)
+                    <a href="{{ route('work-logs.edit', $task) }}" class="wl-btn wl-btn--primary"><i class="mdi mdi-pencil-outline"></i> Edit tugas</a>
+                @endif
+            </div>
         </div>
 
+        <div class="wc-layout">
+        <div class="wc-main">
         <div class="wl-detail-grid wl-detail-grid--stack">
             <div class="wl-card" style="position: relative;">
                 <h3 class="wl-detail-title">{{ $task->title }}</h3>
@@ -44,6 +50,10 @@
                             Tanpa tenggat
                         @endif
                     </dd>
+                    @if ($task->is_self)
+                        <dt>Dikerjakan pada</dt>
+                        <dd>{{ $task->workedDate()->locale('id')->translatedFormat('l, d F Y') }}</dd>
+                    @endif
                     <dt>Dibuat pada</dt>
                     <dd>{{ $task->created_at->locale('id')->translatedFormat('l, d F Y, H:i') }}</dd>
                     <dt>Dibuat oleh</dt>
@@ -55,23 +65,25 @@
                 <h4 class="wl-sub-title" style="margin-top: 6px;">Deskripsi</h4>
                 <div class="wl-desc">{{ $task->description }}</div>
 
-                @if ($task->reference_file_path || $task->reference_link)
+                @if ($task->references->isNotEmpty())
                     <h4 class="wl-sub-title">Referensi tugas</h4>
-                    @if ($task->reference_file_path)
-                        <div class="wl-work-item">
-                            <i class="mdi mdi-paperclip wl-work-ic"></i>
-                            <div class="wl-work-name"><a href="{{ route('work-logs.file.reference', $task) }}" target="_blank">{{ $task->reference_file_name }}</a></div>
-                            <a class="wl-work-dl" href="{{ route('work-logs.file.reference', ['task' => $task, 'download' => 1]) }}">Unduh</a>
-                        </div>
-                    @endif
-                    @if ($task->reference_link)
-                        <div class="wl-work-item">
-                            <i class="mdi mdi-link-variant wl-work-ic"></i>
-                            <div class="wl-work-name">
-                                <a href="{{ $task->reference_link }}" target="_blank" rel="noopener noreferrer">{{ \Illuminate\Support\Str::limit($task->reference_link, 70) }}</a>
+                    @foreach ($task->references as $ref)
+                        @if ($ref->isLink())
+                            <div class="wl-work-item">
+                                <i class="mdi mdi-link-variant wl-work-ic"></i>
+                                <div class="wl-work-name">
+                                    <a href="{{ $ref->url }}" target="_blank" rel="noopener noreferrer">{{ $ref->name }}</a>
+                                    <small>{{ \Illuminate\Support\Str::limit($ref->url, 60) }}</small>
+                                </div>
                             </div>
-                        </div>
-                    @endif
+                        @else
+                            <div class="wl-work-item">
+                                <i class="mdi {{ $ref->icon() }} wl-work-ic"></i>
+                                <div class="wl-work-name"><a href="{{ route('work-logs.file.reference', $ref) }}" target="_blank">{{ $ref->name }}</a></div>
+                                <a class="wl-work-dl" href="{{ route('work-logs.file.reference', ['reference' => $ref, 'download' => 1]) }}">Unduh</a>
+                            </div>
+                        @endif
+                    @endforeach
                 @endif
 
                 @include('includes.work-people', ['people' => $people])
@@ -108,7 +120,7 @@
                                 </span>
                                 <div style="flex: 1 1 auto; min-width: 0;">
                                     <div class="wl-assignee-name">{{ optional($a->user)->name }}</div>
-                                    <div class="wl-assignee-sub">{{ optional(optional($a->user)->division)->name ?: '-' }}</div>
+                                    <div class="wl-assignee-sub">{{ optional(optional($a->user)->division)->name ?: '-' }}@if ($a->submitted_at) &bull; Diajukan {{ $a->submitted_at->locale('id')->translatedFormat('d M Y') }}@endif</div>
                                 </div>
                                 <span class="wl-badge wl-badge--{{ $a->status }}">{{ $a->statusLabel() }}</span>
                                 <i class="mdi mdi-chevron-down wl-chev"></i>
@@ -146,9 +158,13 @@
                 </div>
             </div>
         </div>
+        </div>{{-- .wc-main --}}
+        @include('includes.work-chat', ['task' => $task])
+        </div>{{-- .wc-layout --}}
     </div>
 @endsection
 
 @section('script')
-    <script src="{{ URL::asset('js/work-log.js') }}?v=4"></script>
+    <script src="{{ URL::asset('js/work-log.js') }}?v=10"></script>
+    <script src="{{ URL::asset('js/work-chat.js') }}?v=2"></script>
 @endsection

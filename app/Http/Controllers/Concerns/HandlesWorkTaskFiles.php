@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Concerns;
 use App\Models\WorkTask;
 use App\Models\WorkTaskAssignee;
 use App\Models\WorkTaskAttachment;
+use App\Models\WorkTaskReference;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
@@ -36,7 +37,7 @@ trait HandlesWorkTaskFiles
     }
 
     /** Tambah lampiran berupa file (boleh banyak) dan/atau satu tautan. Mengembalikan jumlah yang ditambah. */
-    protected function addAttachments(WorkTask $task, WorkTaskAssignee $assignee, array $files, ?string $link, ?string $label): int
+    protected function addAttachments(WorkTask $task, WorkTaskAssignee $assignee, array $files, ?string $link, ?string $label, array $links = []): int
     {
         $items = [];
 
@@ -47,12 +48,17 @@ trait HandlesWorkTaskFiles
             }
         }
 
+        // satu tautan (dari form detail) + daftar tautan (dari form tambah tugas)
+        $allLinks = $links;
         if ($link) {
+            array_unshift($allLinks, ['url' => $link, 'label' => $label]);
+        }
+        foreach ($allLinks as $l) {
             $items[] = [
                 'type' => 'link',
-                'name' => $label ?: (parse_url($link, PHP_URL_HOST) ?: $link),
+                'name' => $l['label'] ?: (parse_url($l['url'], PHP_URL_HOST) ?: $l['url']),
                 'path' => null,
-                'url' => $link,
+                'url' => $l['url'],
             ];
         }
 
@@ -95,9 +101,60 @@ trait HandlesWorkTaskFiles
         }
     }
 
-    protected function deleteReferenceIfUnused(?string $path, int $exceptTaskId): void
+    /** Pasangkan daftar url + label (urut sama) menjadi [['url' => ..., 'label' => ...]]; kosong & duplikat dibuang. */
+    protected function pairLinks($urls, $labels): array
     {
-        if ($path && ! WorkTask::where('reference_file_path', $path)->where('id', '!=', $exceptTaskId)->exists()) {
+        $urls = array_values((array) $urls);
+        $labels = array_values((array) $labels);
+        $pairs = [];
+        $seen = [];
+
+        foreach ($urls as $i => $url) {
+            $url = trim((string) $url);
+            if ($url === '' || isset($seen[$url])) {
+                continue;
+            }
+            $seen[$url] = true;
+            $label = isset($labels[$i]) ? trim((string) $labels[$i]) : '';
+            $pairs[] = ['url' => $url, 'label' => $label !== '' ? $label : null];
+        }
+
+        return $pairs;
+    }
+
+    /** Simpan file referensi ke disk; mengembalikan [['name' => ..., 'path' => ...], ...]. */
+    protected function storeReferenceFiles(array $files): array
+    {
+        $stored = [];
+        foreach ($files as $file) {
+            if ($file instanceof UploadedFile) {
+                $stored[] = $this->storeWorkFile($file, 'reference', 'ref');
+            }
+        }
+
+        return $stored;
+    }
+
+    /** Tambah referensi tugas: banyak file (sudah tersimpan) dan banyak tautan. */
+    protected function addReferences(WorkTask $task, array $storedFiles, array $links): void
+    {
+        foreach ($storedFiles as $file) {
+            WorkTaskReference::create(['work_task_id' => $task->id, 'type' => 'file', 'name' => $file['name'], 'path' => $file['path'], 'url' => null]);
+        }
+        foreach ($links as $l) {
+            WorkTaskReference::create([
+                'work_task_id' => $task->id,
+                'type' => 'link',
+                'name' => $l['label'] ?: (parse_url($l['url'], PHP_URL_HOST) ?: $l['url']),
+                'path' => null,
+                'url' => $l['url'],
+            ]);
+        }
+    }
+
+    protected function deleteReferenceFileIfUnused(?string $path): void
+    {
+        if ($path && ! WorkTaskReference::where('path', $path)->exists()) {
             Storage::disk('public')->delete($path);
         }
     }

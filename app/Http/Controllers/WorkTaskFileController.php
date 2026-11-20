@@ -34,7 +34,7 @@ class WorkTaskFileController extends Controller
 
         abort_unless($task->isVisibleTo($viewer), 403);
 
-        if ($viewer->isMentor()) {
+        if ($viewer->isMentor() || $viewer->isViewer()) {
             abort_unless($assignee->user && $assignee->user->isVisibleTo($viewer), 403);
         } elseif (! $viewer->hasRole('admin')) {
             // Peserta: lampiran miliknya, atau lampiran bersama pada tugas mandiri.

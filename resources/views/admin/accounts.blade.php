@@ -503,7 +503,8 @@
             var ROLE_HELP = {
                 'user': 'Peserta magang memiliki data lengkap: kontak, jurusan, divisi, mentor, dan periode magang.',
                 'admin': 'Admin hanya memerlukan nama, email, password, dan divisi.',
-                'super_admin': 'Super Admin hanya memerlukan nama, email, password, dan divisi.'
+                'super_admin': 'Super Admin hanya memerlukan nama, email, password, dan divisi.',
+                'view': 'Viewer hanya memerlukan nama, email, password, dan divisi (wajib). Hanya dapat melihat log pekerjaan peserta di divisinya dan mengunduh lampiran.'
             };
 
             /* ---------- Tabel ---------- */

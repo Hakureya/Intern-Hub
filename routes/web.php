@@ -82,6 +82,9 @@ Route::group(['middleware' => ['auth', 'Role'], 'roles' => ['admin', 'mentor']],
     Route::get('/work-logs/{task}', [\App\Http\Controllers\WorkTaskController::class, 'show'])->where('task', '[0-9]+')->name('work-logs.show');
     Route::get('/work-logs/{task}/edit', [\App\Http\Controllers\WorkTaskController::class, 'edit'])->where('task', '[0-9]+')->name('work-logs.edit');
     Route::put('/work-logs/{task}', [\App\Http\Controllers\WorkTaskController::class, 'update'])->where('task', '[0-9]+')->name('work-logs.update');
+    Route::post('/work-logs/{task}/references', [\App\Http\Controllers\WorkTaskController::class, 'storeReferences'])->where('task', '[0-9]+')->name('work-logs.references.store');
+    Route::delete('/work-logs/{task}/references/{reference}', [\App\Http\Controllers\WorkTaskController::class, 'destroyReference'])->where(['task' => '[0-9]+', 'reference' => '[0-9]+'])->name('work-logs.references.destroy');
+    Route::post('/work-logs/{task}/cancel', [\App\Http\Controllers\WorkTaskController::class, 'cancel'])->where('task', '[0-9]+')->name('work-logs.cancel');
     Route::post('/work-logs/{task}/assignees/{assignee}/status', [\App\Http\Controllers\WorkTaskController::class, 'updateStatus'])->where(['task' => '[0-9]+', 'assignee' => '[0-9]+'])->name('work-logs.status');
 });
 
@@ -107,7 +110,13 @@ Route::group(['middleware' => ['auth', 'Role'], 'roles' => ['super_admin']], fun
     Route::delete('/slide-management/{id}', [\App\Http\Controllers\SlideManagementController::class, 'destroy'])->name('slides.destroy');
 });
 
-Route::group(['middleware' => ['auth']], function () {
+// Role viewer: hanya-baca log pekerjaan satu divisi (tanpa ubah status, edit, chat).
+Route::group(['middleware' => ['auth', 'Role'], 'roles' => ['view']], function () {
+    Route::get('/viewer/work-logs', [\App\Http\Controllers\ViewerWorkTaskController::class, 'index'])->name('viewer.work-logs.index');
+    Route::get('/viewer/work-logs/{task}', [\App\Http\Controllers\ViewerWorkTaskController::class, 'show'])->where('task', '[0-9]+')->name('viewer.work-logs.show');
+});
+
+Route::group(['middleware' => ['auth', 'viewer.guard']], function () {
     Route::get('/home', '\App\Http\Controllers\HomeController@userDashboard')->name('home'); //user home
 
     // direktori peserta + pencarian (admin, mentor, dan peserta)
@@ -157,6 +166,9 @@ Route::group(['middleware' => ['auth']], function () {
     Route::put('/user/work-logs/{task}', [\App\Http\Controllers\UserWorkTaskController::class, 'update'])->where('task', '[0-9]+')->name('user.work-logs.update');
     Route::post('/user/work-logs/{task}/attachments', [\App\Http\Controllers\UserWorkTaskController::class, 'storeAttachments'])->where('task', '[0-9]+')->name('user.work-logs.attachments.store');
     Route::delete('/user/work-logs/{task}/attachments/{attachment}', [\App\Http\Controllers\UserWorkTaskController::class, 'destroyAttachment'])->where(['task' => '[0-9]+', 'attachment' => '[0-9]+'])->name('user.work-logs.attachments.destroy');
+    Route::post('/user/work-logs/{task}/references', [\App\Http\Controllers\UserWorkTaskController::class, 'storeReferences'])->where('task', '[0-9]+')->name('user.work-logs.references.store');
+    Route::delete('/user/work-logs/{task}/references/{reference}', [\App\Http\Controllers\UserWorkTaskController::class, 'destroyReference'])->where(['task' => '[0-9]+', 'reference' => '[0-9]+'])->name('user.work-logs.references.destroy');
+    Route::post('/user/work-logs/{task}/cancel', [\App\Http\Controllers\UserWorkTaskController::class, 'cancel'])->where('task', '[0-9]+')->name('user.work-logs.cancel');
     Route::post('/user/work-logs/{task}/withdraw', [\App\Http\Controllers\UserWorkTaskController::class, 'withdraw'])->where('task', '[0-9]+')->name('user.work-logs.withdraw');
     Route::post('/user/work-logs/{task}/submit', [\App\Http\Controllers\UserWorkTaskController::class, 'submit'])->where('task', '[0-9]+')->name('user.work-logs.submit');
 

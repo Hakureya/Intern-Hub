@@ -2,6 +2,31 @@
 
 @section('css')
     <link href="{{ URL::asset('css/cerah-portal.css') }}?v=2" rel="stylesheet" type="text/css" />
+    <style>
+        .presence-cell {
+            min-width: 0;
+            padding-left: 4px;
+            padding-right: 4px;
+        }
+
+        .presence-chip {
+            font-size: 10px;
+            line-height: 1.2;
+            padding: 3px 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+            letter-spacing: -0.2px;
+        }
+
+        @media (max-width: 1280px) {
+            .presence-chip {
+                font-size: 9.5px;
+                padding: 3px 4px;
+            }
+        }
+    </style>
 @endsection
 
 @section('content')
@@ -71,7 +96,7 @@
                                                 $hasTime &&
                                                 in_array($status, ['Terlambat', 'Perjalanan Dinas'], true)
                                             ) {
-                                                $chipText = $timeIn . ' - ' . $timeOut;
+                                                $chipText = $timeIn . '-' . $timeOut;
                                                 $chipClass = $status === 'Perjalanan Dinas' ? 'chip-dinas' : 'chip-terlambat';
                                             } elseif ($status === 'Perjalanan Dinas') {
                                                 $chipText = 'Perjalanan Dinas';
@@ -92,7 +117,7 @@
                                                 $chipText = 'Terlambat';
                                                 $chipClass = 'chip-terlambat';
                                             } elseif ($hasTime) {
-                                                $chipText = $timeIn . ' - ' . $timeOut;
+                                                $chipText = $timeIn . '-' . $timeOut;
                                                 $chipClass = 'chip-hadir';
                                             } elseif ($isWeekend || $isNationalHoliday) {
                                                 $chipText = 'Libur';

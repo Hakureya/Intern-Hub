@@ -2,7 +2,7 @@
 
 @section('css')
     <link href="{{ URL::asset('css/cerah-portal.css') }}?v=2" rel="stylesheet" type="text/css" />
-    <link href="{{ URL::asset('css/work-log.css') }}?v=11" rel="stylesheet" type="text/css" />
+    <link href="{{ URL::asset('css/work-log.css') }}?v=16" rel="stylesheet" type="text/css" />
 @endsection
 
 @section('content')
@@ -20,20 +20,39 @@
                     <i class="mdi mdi-account-clock-outline"></i> Daftar permintaan
                     @if ($pendingCount) <span class="wl-count">{{ $pendingCount }}</span> @endif
                 </button>
-                <a href="{{ route('user.work-logs.create') }}" class="wl-btn wl-btn--primary"><i class="mdi mdi-plus"></i> Tambah tugas</a>
+                <a href="{{ route('user.work-logs.create', ['type' => $type]) }}" class="wl-btn wl-btn--primary"><i class="mdi mdi-plus"></i> {{ $type === 'daily' ? 'Tambah tugas harian' : 'Tambah tugas proyek' }}</a>
             </div>
         </div>
 
         <form method="GET" action="{{ route('user.work-logs.index') }}" class="wl-filters" id="wl-month-form">
+            <div class="wl-f wl-f--wide">
+                <label class="wl-label" for="wl-q">Cari tugas</label>
+                <input type="search" id="wl-q" name="q" value="{{ $search }}" class="wl-input" placeholder="ID tugas, judul, atau deskripsi..." maxlength="100">
+            </div>
             <div class="wl-f" style="max-width: 220px;">
                 <label class="wl-label" for="wl-month">Bulan</label>
                 <input type="month" id="wl-month" name="month" value="{{ $month }}" class="wl-input" onchange="this.form.submit()">
             </div>
             <input type="hidden" name="status" value="{{ $status }}">
+            <input type="hidden" name="type" value="{{ $type }}">
+            <div class="wl-f" style="flex: 0 0 auto; display: flex; gap: 8px;">
+                <button type="submit" class="wl-btn wl-btn--primary">Cari</button>
+                <a href="{{ route('user.work-logs.index', ['type' => $type]) }}" class="wl-btn">Reset</a>
+            </div>
         </form>
 
+        {{-- Tab bentuk tugas --}}
+        @php($tq = array_filter(['month' => $month, 'q' => $search]))
+        <div class="wl-typetabs">
+            <a class="wl-typetab {{ $type === 'project' ? 'is-active' : '' }}" href="{{ route('user.work-logs.index', $tq + ['type' => 'project']) }}">
+                <i class="mdi mdi-briefcase-outline"></i> Tugas Proyek <small>{{ $typeCounts['project'] }}</small></a>
+            <a class="wl-typetab {{ $type === 'daily' ? 'is-active' : '' }}" href="{{ route('user.work-logs.index', $tq + ['type' => 'daily']) }}">
+                <i class="mdi mdi-calendar-check-outline"></i> Tugas Harian <small>{{ $typeCounts['daily'] }}</small></a>
+        </div>
+
+        {{-- Tab status --}}
         <div class="wl-stats">
-            @php($q = ['month' => $month])
+            @php($q = array_filter(['month' => $month, 'q' => $search]) + ['type' => $type])
             <a class="wl-stat {{ $status === '' ? 'is-active' : '' }}" href="{{ route('user.work-logs.index', $q) }}">
                 <b>{{ array_sum($stats) }}</b><span>Semua tugas</span></a>
             <a class="wl-stat {{ $status === 'sudah' ? 'is-active' : '' }}" href="{{ route('user.work-logs.index', $q + ['status' => 'sudah']) }}">
@@ -45,22 +64,28 @@
         </div>
 
         <div class="wl-list">
-            @forelse ($rows as $row)
+            @forelse ($groups as $date => $groupRows)
+                {{-- Judul tanggal per kelompok (tanggal mulai tugas), sama seperti halaman mentor. --}}
+                @php($day = \Carbon\Carbon::parse($date)->locale('id'))
+                <div class="wl-day-head">
+                    <b>{{ $day->translatedFormat($day->isCurrentYear() ? 'd M' : 'd M Y') }}</b>
+                    <span>{{ $day->isToday() ? 'Hari ini' : ($day->isYesterday() ? 'Kemarin' : ucfirst($day->diffForHumans())) }}</span>
+                </div>
+                @foreach ($groupRows as $row)
                 @php($task = $row['task'])
                 @php($mine = $row['mine'])
                 <div class="wl-row">
                     <a class="wl-row-link" href="{{ route('user.work-logs.show', $task) }}" aria-label="Buka {{ $task->title }}"></a>
                     <div class="wl-row-main">
-                        <h4 class="wl-row-title">{{ $task->title }}</h4>
+                        <h4 class="wl-row-title"><span class="wl-code">{{ $task->code }}</span> {{ $task->title }}</h4>
                         <div class="wl-row-meta">
+                            @if ($task->isDaily())
+                                @if ($task->categoryLabel()) <span><i class="mdi mdi-tag-outline"></i> {{ $task->categoryLabel() }}</span> @endif
+                                @if ($task->quantity !== null) <span><i class="mdi mdi-counter"></i> {{ number_format($task->quantity, 0, ',', '.') }} {{ $task->quantity_unit }}</span> @endif
+                                @if ($task->workStatusLabel()) <span class="wl-badge wl-badge--{{ $task->work_status }}">{{ $task->workStatusLabel() }}</span> @endif
+                            @endif
                             <span><i class="mdi mdi-calendar-clock"></i>
-                                @if ($task->deadline)
-                                    Tenggat {{ $task->deadline->locale('id')->translatedFormat('d M Y') }}
-                                @elseif ($task->is_self)
-                                    Dikerjakan pada {{ $task->workedDate()->locale('id')->translatedFormat('d M Y') }}
-                                @else
-                                    Tanpa tenggat
-                                @endif
+                                {{ $task->dateRangeText() }}
                             </span>
                             @if ($mine && $mine->submitted_at)
                                 <span><i class="mdi mdi-send-check-outline"></i> Diajukan {{ $mine->submitted_at->locale('id')->translatedFormat('d M Y') }}</span>
@@ -68,9 +93,9 @@
                             @if ($task->deadline && !$task->isPastDeadline() && optional($mine)->status !== 'sudah')
                                 @include('includes.work-countdown', ['task' => $task])
                             @endif
-                            <span><i class="mdi mdi-account-edit-outline"></i> Dibuat oleh: {{ $task->is_self ? 'Saya' : (optional($task->creator)->name ?: '-') }}</span>
+                            <span><i class="mdi mdi-account-edit-outline"></i> Dibuat oleh: {{ (int) $task->created_by === (int) auth()->id() ? 'Saya' : (optional($task->creator)->name ?: '-') }}</span>
                             <span class="wl-badge {{ $task->is_self ? 'wl-badge--info' : 'wl-badge--muted' }}">
-                                {{ $task->is_self ? 'Dicatat sendiri' : 'Dari mentor' }}
+                                {{ $task->isDaily() ? 'Harian' : ($task->is_self ? 'Dicatat sendiri' : 'Dari mentor') }}
                             </span>
                             @if ($task->require_attachment && !$task->is_self)
                                 <span><i class="mdi mdi-paperclip"></i> Wajib lampiran</span>
@@ -84,10 +109,11 @@
                     </div>
                     @include('includes.work-people', ['people' => $row['people']])
                 </div>
+                @endforeach
             @empty
                 <div class="wl-empty">
                     <i class="mdi mdi-clipboard-text-outline" style="font-size: 34px;"></i>
-                    <p class="mb-0 mt-2">Belum ada tugas pada bulan ini.</p>
+                    <p class="mb-0 mt-2">{{ $status !== '' || $search !== '' ? 'Tidak ada tugas yang cocok dengan filter.' : ($type === 'daily' ? 'Belum ada tugas harian pada bulan ini.' : 'Belum ada tugas proyek pada bulan ini.') }}</p>
                 </div>
             @endforelse
         </div>
@@ -149,5 +175,5 @@
 @endsection
 
 @section('script')
-    <script src="{{ URL::asset('js/work-log.js') }}?v=10"></script>
+    <script src="{{ URL::asset('js/work-log.js') }}?v=11"></script>
 @endsection

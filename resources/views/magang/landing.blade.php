@@ -19,11 +19,11 @@
                 </div>
             @endif
 
-            <div class="cs-eyebrow"><span class="cs-eyebrow-dot"></span>{{ $batchInfo ?? 'Program Magang Batch 2025/2026' }}</div>
+            <div class="cs-eyebrow"><span class="cs-eyebrow-dot"></span>{{ $batchInfo ?? 'Program Magang Batch PT PLN Suku Cadang' }}</div>
 
             <h1>
                 <span class="is-muted">Wujudkan potensi profesionalmu bersama</span>
-                <span class="cs-accent">PLN Suku Cadang.</span>
+                <span class="cs-accent">PT PLN Suku Cadang.</span>
             </h1>
 
             <p class="cs-hero-desc">
@@ -164,8 +164,8 @@
             <div class="cs-eyebrow">Masih punya pertanyaan?</div>
             <h2>FAQ, biar <span class="cs-accent">jelas.</span></h2>
             <p class="cs-faq-contact">Pertanyaan lain? Hubungi kami di
-                <a href="mailto:lukman.zuhdi@plnsc.co.id">lukman.zuhdi@plnsc.co.id</a>
-                atau nomor HP <a href="tel:+62 815-7879-1145">+62 815-7879-1145</a>.
+                <a href="mailto:lukman.zuhdi@plnsc.co.id" style="white-space: nowrap;">lukman.zuhdi@plnsc.co.id</a>
+                atau nomor HP <a href="tel:+6281578791145" style="white-space: nowrap;">+62 815-7879-1145</a>.
             </p>
         </div>
         <div class="cs-faq-list">

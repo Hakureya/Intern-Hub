@@ -58,6 +58,9 @@ class LoginController extends Controller
     protected function redirectTo()
     {
         $user = auth()->user();
+        if ($user && $user->isViewer()) {
+            return route('viewer.work-logs.index');
+        }
         if ($user && ($user->hasRole('admin') || $user->hasRole('mentor'))) {
             return '/admin';
         }

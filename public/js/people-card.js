@@ -1,4 +1,4 @@
-/* Kartu peserta: render kartu, animasi putar, pencarian navbar, halaman Direktori. */
+/* Kartu peserta: render kartu, animasi putar (bisa dilewati dengan klik), pencarian navbar, halaman Direktori. */
 (function () {
     'use strict';
 
@@ -74,9 +74,16 @@
     function closeCard() {
         if (overlay) {
             clearTimeout(settleTimer);
-            overlay.classList.remove('is-open', 'is-settled');
+            overlay.classList.remove('is-open', 'is-settled', 'is-skipped');
             overlay.firstChild.innerHTML = '';
         }
+    }
+
+    // Lewati animasi putar: kartu langsung tampil diam menghadap depan.
+    function skipSpin() {
+        if (!overlay || overlay.classList.contains('is-settled')) { return; }
+        clearTimeout(settleTimer);
+        overlay.classList.add('is-skipped', 'is-settled');
     }
 
     function openCard(list, logo) {
@@ -88,6 +95,9 @@
             overlay.innerHTML = '<div class="pc-stage"></div><button type="button" class="pc-overlay-x" aria-label="Tutup">&times;</button>';
             document.body.appendChild(overlay);
             overlay.addEventListener('click', function (e) {
+                if (e.target.closest('.pc-overlay-x')) { closeCard(); return; }
+                // Selama kartu masih berputar, klik (pada kartu atau latar) melewati animasi. Setelah diam, klik di luar kartu menutup.
+                if (!overlay.classList.contains('is-settled')) { skipSpin(); return; }
                 if (!e.target.closest('.pc-flip')) { closeCard(); }
             });
             document.addEventListener('keydown', function (e) {
@@ -100,7 +110,7 @@
         }).join('');
 
         clearTimeout(settleTimer);
-        overlay.classList.remove('is-open', 'is-settled');
+        overlay.classList.remove('is-open', 'is-settled', 'is-skipped');
         void overlay.offsetWidth; // mulai ulang animasi
         overlay.classList.add('is-open');
         // gulir baru aktif setelah animasi selesai (mencegah scrollbar berkedip saat kartu berputar)

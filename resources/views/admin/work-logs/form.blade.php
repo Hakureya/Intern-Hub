@@ -1,9 +1,10 @@
 @extends('layouts.master')
 
 @php($isEdit = !is_null($task))
+@php($isSelf = $isEdit && $task->is_self)
 
 @section('css')
-    <link href="{{ URL::asset('css/work-log.css') }}?v=11" rel="stylesheet" type="text/css" />
+    <link href="{{ URL::asset('css/work-log.css') }}?v=19" rel="stylesheet" type="text/css" />
 @endsection
 
 @section('breadcrumb')
@@ -24,7 +25,11 @@
                 <h2 class="wl-title">{{ $isEdit ? 'Edit tugas' : 'Tambah tugas baru' }}</h2>
                 <p class="wl-sub">
                     @if ($isEdit)
-                        Tugas hanya bisa diedit sebelum tenggat. Setiap perubahan mengembalikan status seluruh peserta menjadi Belum.
+                        @if ($isSelf)
+                            Tugas ini dicatat sendiri oleh peserta. Anda dapat mengubah judul, deskripsi, dan rentang tanggalnya. Setiap perubahan mengembalikan status peserta menjadi Belum.
+                        @else
+                            Tugas dapat diedit kapan saja, termasuk yang sudah lewat tenggat. Setiap perubahan mengembalikan status seluruh peserta menjadi Belum.
+                        @endif
                     @else
                         Isi detail pekerjaan, lalu pilih satu atau beberapa peserta magang yang akan mengerjakannya.
                     @endif
@@ -54,36 +59,52 @@
                 </div>
 
                 <div class="wl-form-grid">
+                    @if ($isSelf)
+                        <div class="wl-field">
+                            <label class="wl-label" for="start_date">Tanggal mulai <span class="req">*</span></label>
+                            <input type="date" id="start_date" name="start_date" class="wl-input" required data-wl-date-start
+                                max="{{ now()->toDateString() }}"
+                                value="{{ old('start_date', $task->workedDate()->toDateString()) }}">
+                            @error('start_date') <div class="wl-error">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="wl-field">
+                            <label class="wl-label" for="end_date">Tanggal selesai <span class="req">*</span></label>
+                            <input type="date" id="end_date" name="end_date" class="wl-input" required data-wl-date-end
+                                max="{{ now()->toDateString() }}"
+                                min="{{ old('start_date', $task->workedDate()->toDateString()) }}"
+                                value="{{ old('end_date', optional($task->endDate() ?: $task->workedDate())->toDateString()) }}">
+                            @error('end_date') <div class="wl-error">{{ $message }}</div> @enderror
+                        </div>
+                    @else
                     <div class="wl-field">
-                        <label class="wl-label" for="deadline">Tenggat <small>(opsional)</small></label>
-                        <input type="date" id="deadline" name="deadline" class="wl-input"
-                            @unless ($isEdit) min="{{ now()->toDateString() }}" @endunless
+                        <label class="wl-label" for="deadline">Tanggal selesai (tenggat) <span class="req">*</span></label>
+                        <input type="date" id="deadline" name="deadline" class="wl-input" required
+                            min="{{ $isEdit ? $task->workedDate()->toDateString() : now()->toDateString() }}"
                             value="{{ old('deadline', optional(optional($task)->deadline)->toDateString()) }}">
+                        <div class="wl-hint">
+                            Tanggal mulai:
+                            <b>{{ ($isEdit ? $task->workedDate() : now())->locale('id')->translatedFormat('d F Y') }}</b>
+                            ({{ $isEdit ? 'sejak tugas dibuat' : 'otomatis sejak tugas dibuat' }}). Tanggal selesai mengikuti tenggat ini.
+                        </div>
                         @error('deadline') <div class="wl-error">{{ $message }}</div> @enderror
                     </div>
+                    @endif
 
+                    @if ($isEdit)
+                        <div class="wl-field full">
+                            <div class="wl-hint"><i class="mdi mdi-information-outline"></i> Referensi tugas ditambah atau dihapus langsung di halaman detail tugas.</div>
+                        </div>
+                    @else
                     {{-- Blok PHP biasa (bukan direktif multi-baris) agar tidak bentrok dengan direktif php satu baris di file ini. --}}
                     <?php
                         $oldRefLinks = [];
                         foreach ((array) old('reference_links', []) as $i => $u) {
                             if ($u) { $oldRefLinks[] = ['url' => $u, 'label' => old('reference_link_labels.' . $i)]; }
                         }
-                        $existingRefs = [];
-                        if ($isEdit) {
-                            foreach ($task->references as $ref) {
-                                $existingRefs[] = [
-                                    'id' => $ref->id,
-                                    'type' => $ref->type,
-                                    'name' => $ref->name,
-                                    'url' => $ref->isLink() ? $ref->url : route('work-logs.file.reference', $ref),
-                                ];
-                            }
-                        }
                     ?>
                     <div class="wl-field" data-wl-attach data-wl-attach-modal="#wl-link-modal"
-                        data-wl-link-name="reference_links" data-wl-label-name="reference_link_labels" data-wl-remove-name="remove_references"
-                        data-wl-links="{{ json_encode($oldRefLinks, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}"
-                        data-wl-existing="{{ json_encode($existingRefs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}">
+                        data-wl-link-name="reference_links" data-wl-label-name="reference_link_labels"
+                        data-wl-links="{{ json_encode($oldRefLinks, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}">
                         <label class="wl-label">Lampiran referensi tugas <small>(opsional)</small></label>
                         <div class="wl-attach">
                             <div class="wl-menu-wrap">
@@ -106,7 +127,9 @@
                             <div class="wl-error">{{ $msg }}</div>
                         @endforeach
                     </div>
+                    @endif
 
+                    @unless ($isSelf)
                     <div class="wl-field full">
                         <label class="wl-label">Peserta wajib melampirkan bukti pengerjaan? <span class="req">*</span></label>
                         @php($req = (string) old('require_attachment', optional($task)->require_attachment ? '1' : '0'))
@@ -116,8 +139,12 @@
                         </div>
                         @error('require_attachment') <div class="wl-error">{{ $message }}</div> @enderror
                     </div>
+                    @endunless
                 </div>
 
+                @if ($isSelf)
+                    <div class="wl-hint" style="margin-top: 6px;">Peserta pada tugas ini diatur sendiri oleh peserta (pembuat dan rekan kolaborasinya), sehingga tidak dapat diubah dari sini.</div>
+                @else
                 <hr class="wl-divider">
 
                     <div class="wl-section-head">
@@ -143,11 +170,13 @@
                                     data-person="{{ json_encode($p->directoryCard(true), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}">
                                     <input type="checkbox" name="participants[]" value="{{ $p->id }}" {{ $on ? 'checked' : '' }}>
                                     <span class="pc-pick-card"><span class="pc-pick-fallback">{{ $p->name }}</span></span>
+                                    <span class="pc-pick-name">{{ $p->name }}</span>
                                 </label>
                             @endforeach
                         </div>
                     @endif
                     @error('participants') <div class="wl-error">{{ $message }}</div> @enderror
+                @endif
             </div>
 
             <div style="display: flex; gap: 10px; justify-content: flex-end;">
@@ -157,6 +186,7 @@
         </form>
     </div>
 
+    @unless ($isEdit)
     {{-- Modal tautan (di luar form); tiap tautan ditambahkan ke daftar dan dikirim sebagai reference_links[]. --}}
     <div class="wl-modal wl" id="wl-link-modal">
         <div class="wl-modal-box" style="width: min(480px, 100%);">
@@ -180,8 +210,9 @@
             </div>
         </div>
     </div>
+    @endunless
 @endsection
 
 @section('script')
-    <script src="{{ URL::asset('js/work-log.js') }}?v=10"></script>
+    <script src="{{ URL::asset('js/work-log.js') }}?v=13"></script>
 @endsection

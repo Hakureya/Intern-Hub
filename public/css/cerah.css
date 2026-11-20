@@ -974,12 +974,13 @@ body.cs-portal.cs-open .cs-overlay {
 
     .cs-sidebar {
         transform: translateX(-100%);
-        transition: transform .25s;
-        box-shadow: 12px 0 35px #2222;
+        transition: transform .25s, box-shadow .25s;
+        box-shadow: none; /* tertutup: jangan ada bayangan yang bocor ke tepi kiri layar */
     }
 
     body.cs-portal.cs-open .cs-sidebar {
         transform: translateX(0);
+        box-shadow: 12px 0 35px #2222;
     }
 
     .cs-menu-btn {

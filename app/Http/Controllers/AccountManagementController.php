@@ -31,6 +31,7 @@ class AccountManagementController extends Controller
         'admin' => 'Admin',
         'mentor' => 'Mentor',
         'super_admin' => 'Super Admin',
+        'view' => 'Viewer',
     ];
 
     private const ROLE_NAMES = [
@@ -38,6 +39,7 @@ class AccountManagementController extends Controller
         'admin' => 'Administrator',
         'mentor' => 'Mentor',
         'super_admin' => 'Super Administrator',
+        'view' => 'Viewer',
     ];
 
     private const PASSWORD_REGEX = '/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/';
@@ -290,6 +292,11 @@ class AccountManagementController extends Controller
             $rules['password'] = ['required', 'string', 'min:8', 'regex:' . self::PASSWORD_REGEX, 'confirmed'];
         }
 
+        // Viewer: hanya nama, email, password, dan divisi (divisi wajib, menentukan data yang bisa dilihat).
+        if ($role === 'view') {
+            $rules['division_id'] = ['required', 'exists:divisions,id'];
+        }
+
         // Peserta magang punya data lebih lengkap; admin & super admin cukup nama, email, password, divisi.
         if ($role === 'user') {
             $rules += [
@@ -380,7 +387,7 @@ class AccountManagementController extends Controller
 
     private function primaryRole(array $slugs): ?string
     {
-        foreach (['super_admin', 'admin', 'mentor', 'user'] as $slug) {
+        foreach (['super_admin', 'admin', 'mentor', 'user', 'view'] as $slug) {
             if (in_array($slug, $slugs, true)) {
                 return $slug;
             }

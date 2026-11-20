@@ -1,4 +1,4 @@
-/* Ruang chat tugas: pesan, edit pesan ("diedit"), lampiran foto/video/file dengan preview, catatan pengeditan tugas, riwayat. */
+/* Ruang chat tugas: pesan, edit pesan ("diedit"), lampiran (menu klip: foto/video atau dokumen, banyak file, pratinjau + keterangan sebelum kirim seperti WhatsApp). Riwayat pengeditan tugas hanya tampil di popup Riwayat. */
 (function () {
     'use strict';
 
@@ -20,12 +20,23 @@
     var olderBtn = document.getElementById('wcOlder');
     var emptyEl = document.getElementById('wcEmpty');
     var errorBox = document.getElementById('wcError');
-    var tray = document.getElementById('wcTray');
     var form = document.getElementById('wcForm');
     var input = document.getElementById('wcInput');
-    var filesInput = document.getElementById('wcFiles');
     var sendBtn = document.getElementById('wcSend');
     var attachBtn = document.getElementById('wcAttach');
+    var attachMenu = document.getElementById('wcAttachMenu');
+    var filesMedia = document.getElementById('wcFilesMedia');
+    var filesDoc = document.getElementById('wcFilesDoc');
+    var composeEl = document.getElementById('wcCompose');
+    var composeTitle = document.getElementById('wcComposeTitle');
+    var composeSub = document.getElementById('wcComposeSub');
+    var composeErr = document.getElementById('wcComposeError');
+    var composeSend = document.getElementById('wcComposeSend');
+    var composeCount = document.getElementById('wcComposeCount');
+    var composeClose = document.getElementById('wcComposeClose');
+    var stage = document.getElementById('wcStage');
+    var strip = document.getElementById('wcStrip');
+    var caption = document.getElementById('wcCaption');
     var light = document.getElementById('wcLight');
     var side = document.getElementById('wcSide');
     var tab = document.getElementById('wcTab');
@@ -37,7 +48,7 @@
     var lastId = 0;       // id pesan terbaru yang sudah tampil
     var oldestId = null;  // id pesan tertua yang sudah tampil
     var since = null;     // waktu server pada polling terakhir (untuk mendeteksi pesan yang diedit)
-    var pending = [];     // file yang dipilih, belum terkirim
+    var pending = [];     // lampiran yang dipilih, belum terkirim: { file, kind: image|video|file, url }
     var sending = false;
     var errTimer = null;
 
@@ -104,6 +115,8 @@
     function setOpen(open) {
         side.classList.toggle('is-open', open);
         tab.setAttribute('aria-expanded', open ? 'true' : 'false');
+        // HP: panel memenuhi layar, jadi halaman di belakangnya tidak boleh ikut bergulir
+        document.documentElement.classList.toggle('wc-lock', open && window.matchMedia('(max-width: 640px)').matches);
         if (!isNarrow()) { try { localStorage.setItem('wc:open', open ? '1' : '0'); } catch (e) { /* abaikan */ } }
         if (open) {
             unread = 0;
@@ -167,13 +180,8 @@
     function makeRow(m) {
         var el = document.createElement('div');
         el.setAttribute('data-id', m.id);
-        if (m.kind === 'edit') {
-            el.className = 'wc-sysrow';
-            el.innerHTML = sysHtml(m, false);
-        } else {
-            el.className = 'wc-row' + (m.user.mine ? ' mine' : '');
-            el.innerHTML = bubbleHtml(m);
-        }
+        el.className = 'wc-row' + (m.user.mine ? ' mine' : '');
+        el.innerHTML = bubbleHtml(m);
         el._m = m;
         return el;
     }
@@ -189,7 +197,6 @@
     // Perbarui pesan yang sudah ada (teks + label "diedit") tanpa menyentuh foto/video agar tidak termuat ulang.
     function updateRow(el, m) {
         el._m = m;
-        if (m.kind === 'edit') { return; }
         var t = el.querySelector('.wc-text');
         var e = el.querySelector('.wc-edited');
         if (t && !t.querySelector('textarea')) { t.innerHTML = textHtml(m); }
@@ -279,53 +286,16 @@
     setInterval(poll, 5000);
     document.addEventListener('visibilitychange', function () { if (!document.hidden) { poll(); } });
 
-    /* ---------- lampiran (sebelum kirim) ---------- */
-    function renderTray() {
-        tray.hidden = pending.length === 0;
-        tray.innerHTML = '';
-        pending.forEach(function (f, i) {
-            var chip = document.createElement('div');
-            chip.className = 'wc-chip';
-            if (f.type.indexOf('image/') === 0 && /^image\/(jpeg|png|gif|webp)$/.test(f.type)) {
-                var img = document.createElement('img');
-                img.src = URL.createObjectURL(f);
-                img.onload = function () { URL.revokeObjectURL(img.src); };
-                chip.appendChild(img);
-            } else {
-                chip.innerHTML = '<i class="mdi ' + (f.type.indexOf('video/') === 0 ? 'mdi-play-circle-outline' : 'mdi-file-document-outline') + '"></i>';
-            }
-            var name = document.createElement('em');
-            name.textContent = f.name;
-            chip.appendChild(name);
-            var rm = document.createElement('button');
-            rm.type = 'button';
-            rm.setAttribute('aria-label', 'Hapus lampiran');
-            rm.innerHTML = '&times;';
-            rm.addEventListener('click', function () { pending.splice(i, 1); renderTray(); });
-            chip.appendChild(rm);
-            tray.appendChild(chip);
+    /* ---------- kirim pesan (satu endpoint untuk teks saja maupun lampiran + keterangan) ---------- */
+    function autosizeEl(el, max) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, max) + 'px'; }
+    function autosize() { autosizeEl(input, 120); }
+
+    function postMessage(fd) {
+        return fetch(URLS.store, { method: 'POST', credentials: 'same-origin', headers: headers({}), body: fd }).then(function (r) {
+            return r.json().catch(function () { return null; }).then(function (json) { return { r: r, json: json }; });
         });
     }
 
-    function addFiles(fileList) {
-        [].slice.call(fileList).forEach(function (f) {
-            if (pending.length >= MAX_FILES) { showError('Maksimal ' + MAX_FILES + ' file per pesan.'); return; }
-            if (f.size > MAX_SIZE) { showError(f.name + ': ukuran maksimal 25 MB.'); return; }
-            var dup = pending.some(function (x) { return x.name === f.name && x.size === f.size && x.lastModified === f.lastModified; });
-            if (!dup) { pending.push(f); }
-        });
-        renderTray();
-    }
-
-    attachBtn.addEventListener('click', function () { filesInput.click(); });
-    filesInput.addEventListener('change', function () { addFiles(filesInput.files); filesInput.value = ''; });
-    input.addEventListener('paste', function (e) {
-        var files = e.clipboardData && e.clipboardData.files;
-        if (files && files.length) { addFiles(files); }
-    });
-
-    /* ---------- kirim ---------- */
-    function autosize() { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 120) + 'px'; }
     input.addEventListener('input', autosize);
     input.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit ? form.requestSubmit() : sendBtn.click(); }
@@ -335,26 +305,250 @@
         e.preventDefault();
         if (sending) { return; }
         var text = input.value.trim();
-        if (!text && !pending.length) { return; }
+        if (!text) { return; }
 
         var fd = new FormData();
-        if (text) { fd.append('body', text); }
-        pending.forEach(function (f) { fd.append('files[]', f); });
+        fd.append('body', text);
 
         sending = true;
         sendBtn.disabled = true;
-        fetch(URLS.store, { method: 'POST', credentials: 'same-origin', headers: headers({}), body: fd }).then(function (r) {
-            return r.json().catch(function () { return null; }).then(function (json) { return { r: r, json: json }; });
-        }).then(function (x) {
+        postMessage(fd).then(function (x) {
             if (!x.r.ok) { showError(errorFrom(x.r, x.json)); return; }
             appendMessages([x.json.message]);
             input.value = '';
             autosize();
-            pending = [];
-            renderTray();
             toBottom();
         }).catch(function () { showError('Pesan gagal terkirim. Periksa koneksi lalu coba lagi.'); })
             .then(function () { sending = false; sendBtn.disabled = false; input.focus(); });
+    });
+
+    /* ---------- lampiran: menu klip kertas ---------- */
+    var ALLOWED = /\.(jpe?g|png|gif|webp|mp4|webm|mov|pdf|docx?|xlsx?|pptx?|txt|csv|zip)$/i;
+    var pickMode = 'media';   // mode terakhir ('media' | 'doc'), dipakai tombol "+" di pratinjau
+    var selected = 0;         // indeks lampiran yang sedang dipratinjau
+
+    function setMenu(open) {
+        attachMenu.hidden = !open;
+        attachBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+    function pickFiles(mode) {
+        pickMode = mode === 'doc' ? 'doc' : 'media';
+        setMenu(false);
+        (pickMode === 'doc' ? filesDoc : filesMedia).click();
+    }
+
+    attachBtn.addEventListener('click', function (e) { e.stopPropagation(); setMenu(attachMenu.hidden); });
+    attachMenu.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-wc-pick]');
+        if (b) { pickFiles(b.getAttribute('data-wc-pick')); }
+    });
+    document.addEventListener('click', function (e) {
+        if (!attachMenu.hidden && !e.target.closest('.wc-attach-wrap')) { setMenu(false); }
+    });
+    [filesMedia, filesDoc].forEach(function (inp) {
+        inp.addEventListener('change', function () { addFiles(inp.files); inp.value = ''; });
+    });
+    input.addEventListener('paste', function (e) {
+        var files = e.clipboardData && e.clipboardData.files;
+        if (files && files.length) { e.preventDefault(); pickMode = 'media'; addFiles(files); }
+    });
+
+    /* ---------- lampiran: pratinjau + keterangan sebelum kirim ---------- */
+    function kindOf(f) {
+        if (/^image\/(jpeg|png|gif|webp)$/.test(f.type)) { return 'image'; }
+        if (f.type.indexOf('video/') === 0) { return 'video'; }
+        return 'file';
+    }
+    function extOf(name) { var m = /\.([a-z0-9]+)$/i.exec(name); return m ? m[1].toUpperCase() : 'FILE'; }
+    function composeOpen() { return !composeEl.hidden; }
+
+    function flashError(msg) {
+        if (!composeOpen()) { showError(msg); return; }
+        composeErr.textContent = msg;
+        composeErr.hidden = false;
+        clearTimeout(errTimer);
+        errTimer = setTimeout(function () { composeErr.hidden = true; }, 6000);
+    }
+
+    function addFiles(fileList) {
+        var before = pending.length;
+        var errors = [];
+        [].slice.call(fileList).forEach(function (f) {
+            if (pending.length >= MAX_FILES) { errors.push('Maksimal ' + MAX_FILES + ' file per pesan.'); return; }
+            if (!ALLOWED.test(f.name)) { errors.push(f.name + ': format tidak didukung.'); return; }
+            if (f.size > MAX_SIZE) { errors.push(f.name + ': ukuran maksimal 25 MB.'); return; }
+            var dup = pending.some(function (x) { var o = x.file; return o.name === f.name && o.size === f.size && o.lastModified === f.lastModified; });
+            if (dup) { return; }
+            var kind = kindOf(f);
+            pending.push({ file: f, kind: kind, url: kind === 'file' ? null : URL.createObjectURL(f) });
+        });
+
+        if (!pending.length) { if (errors.length) { showError(errors[0]); } return; }
+
+        if (pending.length > before) { selected = before; }   // tampilkan lampiran baru pertama
+        pickMode = pending[0].kind === 'file' ? 'doc' : 'media';
+        if (!composeOpen()) { openCompose(); }
+        renderCompose(pending.length > before);
+        if (errors.length) { flashError(errors[0]); }
+    }
+
+    function openCompose() {
+        caption.value = input.value;   // teks yang sudah diketik di kolom pesan jadi keterangan awal
+        composeErr.hidden = true;
+        composeEl.hidden = false;
+        autosizeEl(caption, 110);      // setelah tampil: saat tersembunyi scrollHeight = 0 sehingga kolom jadi gepeng
+        if (!window.matchMedia('(pointer: coarse)').matches) { setTimeout(function () { caption.focus(); }, 30); }
+    }
+
+    function closeCompose() {
+        if (sending) { return; }
+        pending.forEach(function (p) { if (p.url) { URL.revokeObjectURL(p.url); } });
+        pending = [];
+        selected = 0;
+        stage.innerHTML = '';
+        strip.innerHTML = '';
+        composeEl.hidden = true;
+        composeErr.hidden = true;
+    }
+
+    function stageEl(cur) {
+        var el;
+        if (cur.kind === 'image') {
+            el = document.createElement('img');
+            el.src = cur.url;
+            el.alt = cur.file.name;
+        } else if (cur.kind === 'video') {
+            el = document.createElement('video');
+            el.src = cur.url;
+            el.controls = true;
+            el.preload = 'metadata';
+            el.setAttribute('playsinline', '');
+        } else {
+            el = document.createElement('div');
+            el.className = 'wc-doc';
+            el.innerHTML = '<i class="mdi ' + (/\.pdf$/i.test(cur.file.name) ? 'mdi-file-pdf-box' : 'mdi-file-document-outline') + '"></i><b></b><small></small>';
+            el.querySelector('b').textContent = cur.file.name;
+            el.querySelector('small').textContent = sizeText(cur.file.size) + ' \u00b7 ' + extOf(cur.file.name);
+        }
+        return el;
+    }
+
+    function thumbEl(p, i) {
+        var th = document.createElement('div');
+        th.className = 'wc-th' + (i === selected ? ' is-active' : '');
+        th.setAttribute('data-i', i);
+        th.setAttribute('role', 'button');
+        th.setAttribute('tabindex', '0');
+        th.setAttribute('aria-label', 'Pratinjau ' + p.file.name);
+        if (p.kind === 'image') {
+            var img = document.createElement('img');
+            img.src = p.url;
+            img.alt = '';
+            th.appendChild(img);
+        } else if (p.kind === 'video') {
+            th.innerHTML = '<i class="mdi mdi-play-circle-outline"></i>';
+        } else {
+            th.innerHTML = '<i class="mdi mdi-file-document-outline"></i><em></em>';
+            th.querySelector('em').textContent = extOf(p.file.name);
+        }
+        var rm = document.createElement('span');
+        rm.className = 'wc-th-x';
+        rm.setAttribute('data-rm', i);
+        rm.setAttribute('role', 'button');
+        rm.setAttribute('aria-label', 'Hapus ' + p.file.name);
+        rm.innerHTML = '&times;';
+        th.appendChild(rm);
+        return th;
+    }
+
+    function renderCompose(scrollEnd) {
+        if (!pending.length) { closeCompose(); return; }
+        if (selected >= pending.length) { selected = pending.length - 1; }
+        var cur = pending[selected];
+
+        var total = pending.reduce(function (sum, p) { return sum + p.file.size; }, 0);
+        composeTitle.textContent = pending.length === 1 ? cur.file.name : pending.length + ' file dipilih';
+        composeSub.textContent = pending.length === 1 ? sizeText(cur.file.size) : 'Total ' + sizeText(total) + ' \u00b7 maks. ' + MAX_FILES + ' file';
+
+        stage.innerHTML = '';
+        stage.appendChild(stageEl(cur));
+
+        var keep = strip.scrollLeft;
+        strip.innerHTML = '';
+        pending.forEach(function (p, i) { strip.appendChild(thumbEl(p, i)); });
+        if (pending.length < MAX_FILES) {
+            var add = document.createElement('button');
+            add.type = 'button';
+            add.className = 'wc-th wc-th--add';
+            add.setAttribute('data-add', '1');
+            add.setAttribute('aria-label', 'Tambah lampiran');
+            add.innerHTML = '<i class="mdi mdi-plus"></i>';
+            strip.appendChild(add);
+        }
+        strip.scrollLeft = scrollEnd ? strip.scrollWidth : keep;
+
+        composeCount.hidden = pending.length < 2;
+        composeCount.textContent = pending.length;
+    }
+
+    strip.addEventListener('click', function (e) {
+        var rm = e.target.closest('[data-rm]');
+        if (rm) {
+            var idx = parseInt(rm.getAttribute('data-rm'), 10);
+            var gone = pending.splice(idx, 1)[0];
+            if (gone && gone.url) { URL.revokeObjectURL(gone.url); }
+            if (idx < selected) { selected -= 1; }
+            renderCompose();
+            return;
+        }
+        if (e.target.closest('[data-add]')) { pickFiles(pickMode); return; }
+        var th = e.target.closest('[data-i]');
+        if (th) { selected = parseInt(th.getAttribute('data-i'), 10); renderCompose(); }
+    });
+    strip.addEventListener('keydown', function (e) {
+        var th = e.target.closest && e.target.closest('[data-i]');
+        if (th && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); selected = parseInt(th.getAttribute('data-i'), 10); renderCompose(); }
+    });
+
+    caption.addEventListener('input', function () { autosizeEl(caption, 110); });
+    caption.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendCompose(); }
+    });
+    composeClose.addEventListener('click', closeCompose);
+    composeSend.addEventListener('click', sendCompose);
+
+    function sendCompose() {
+        if (sending || !pending.length) { return; }
+
+        var fd = new FormData();
+        var text = caption.value.trim();
+        if (text) { fd.append('body', text); }
+        pending.forEach(function (p) { fd.append('files[]', p.file); });
+
+        sending = true;
+        composeSend.disabled = true;
+        composeEl.classList.add('is-sending');
+        postMessage(fd).then(function (x) {
+            if (!x.r.ok) { flashError(errorFrom(x.r, x.json)); return false; }
+            appendMessages([x.json.message]);
+            input.value = '';
+            autosize();
+            return true;
+        }).catch(function () {
+            flashError('Pesan gagal terkirim. Periksa koneksi lalu coba lagi.');
+            return false;
+        }).then(function (ok) {
+            sending = false;
+            composeSend.disabled = false;
+            composeEl.classList.remove('is-sending');
+            if (ok) { closeCompose(); toBottom(); }
+        });
+    }
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape') { return; }
+        if (!attachMenu.hidden) { setMenu(false); return; }
+        if (composeOpen() && light.hidden) { closeCompose(); }
     });
 
     /* ---------- edit pesan (tidak ada hapus) ---------- */

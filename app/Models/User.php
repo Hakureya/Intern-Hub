@@ -215,12 +215,19 @@ class User extends Authenticatable
         return $this->hasRole('mentor') && ! $this->hasRole('admin');
     }
 
+    /** Viewer murni: hanya-baca log pekerjaan satu divisinya. */
+    public function isViewer(): bool
+    {
+        return $this->hasRole('view')
+            && ! $this->hasRole('admin') && ! $this->hasRole('mentor') && ! $this->hasRole('user');
+    }
+
     /** Batasi query peserta: mentor hanya melihat peserta di divisinya, admin melihat semua. */
     public function scopeInScope($query, ?self $viewer = null)
     {
         $viewer = $viewer ?: auth()->user();
 
-        if ($viewer && $viewer->isMentor()) {
+        if ($viewer && ($viewer->isMentor() || $viewer->isViewer())) {
             $viewer->division_id
                 ? $query->where('users.division_id', $viewer->division_id)
                 : $query->whereRaw('1 = 0');
@@ -239,7 +246,7 @@ class User extends Authenticatable
             return true;
         }
 
-        return $viewer->isMentor()
+        return ($viewer->isMentor() || $viewer->isViewer())
             && $viewer->division_id
             && (int) $viewer->division_id === (int) $this->division_id;
     }

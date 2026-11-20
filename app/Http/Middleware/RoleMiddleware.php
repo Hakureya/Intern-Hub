@@ -30,6 +30,10 @@ class RoleMiddleware
             return redirect()->route('home')->with('error', 'Akses admin tidak tersedia untuk akun user.');
         }
 
+        if (auth()->user()->isViewer()) {
+            return redirect()->route('viewer.work-logs.index');
+        }
+
         if (auth()->user()->isMentor()) {
             return redirect()->route('admin')->with('error', 'Akses tidak tersedia untuk akun mentor.');
         }

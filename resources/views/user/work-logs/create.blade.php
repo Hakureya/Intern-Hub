@@ -4,7 +4,7 @@
 
 @section('css')
     <link href="{{ URL::asset('css/cerah-portal.css') }}?v=2" rel="stylesheet" type="text/css" />
-    <link href="{{ URL::asset('css/work-log.css') }}?v=11" rel="stylesheet" type="text/css" />
+    <link href="{{ URL::asset('css/work-log.css') }}?v=16" rel="stylesheet" type="text/css" />
 @endsection
 
 @section('content')
@@ -14,9 +14,9 @@
     <div class="home-shell wl">
         <div class="wl-head">
             <div>
-                <h2 class="wl-title">{{ $isEdit ? 'Edit tugas' : 'Tambah tugas yang dikerjakan' }}</h2>
+                <h2 class="wl-title">{{ $isEdit ? 'Edit tugas' : ($type === 'daily' ? 'Tambah tugas harian' : 'Tambah tugas proyek') }}</h2>
                 <p class="wl-sub">
-                    {{ $isEdit ? 'Tugas hanya bisa diedit sebelum tenggat.' : 'Catat pekerjaan yang sudah kamu kerjakan. Mentor akan memeriksanya.' }}
+                    {{ $isEdit ? 'Tugas hanya bisa diedit sebelum tenggat. Pembuat tugas dan rekan kolaborasi sama-sama bisa mengeditnya.' : 'Catat pekerjaan yang sudah kamu kerjakan. Mentor akan memeriksanya.' }}
                 </p>
             </div>
         </div>
@@ -26,8 +26,73 @@
             @if ($isEdit) data-confirm="Menyimpan perubahan akan mengembalikan status menjadi Belum. Lampiranmu tetap tersimpan." data-confirm-title="Simpan perubahan?" data-confirm-ok="Ya, simpan" data-confirm-level="warning" data-confirm-tone="normal" @endif>
             @csrf
             @if ($isEdit) @method('PUT') @endif
+            <input type="hidden" name="type" value="{{ $type }}">
 
             <div class="wl-card">
+                @if ($type === 'daily')
+                    @php($me = auth()->user())
+                    @php($startLimit = $me->internship_start_date ? \Carbon\Carbon::parse($me->internship_start_date) : null)
+                    <div class="wl-field">
+                        <label class="wl-label" for="work_date">Tanggal pengerjaan <span class="req">*</span></label>
+                        <input type="date" id="work_date" name="work_date" class="wl-input" required
+                            max="{{ now()->toDateString() }}"
+                            @if ($startLimit && $startLimit->lte(now())) min="{{ $startLimit->toDateString() }}" @endif
+                            value="{{ old('work_date', $isEdit ? $task->workedDate()->toDateString() : now()->toDateString()) }}">
+                        <div class="wl-hint">Otomatis hari ini. Ubah bila kemarin lupa mengisi.</div>
+                        @error('work_date') <div class="wl-error">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="wl-field">
+                        <label class="wl-label" for="title">Judul / nama aktivitas <span class="req">*</span></label>
+                        <input type="text" id="title" name="title" class="wl-input" maxlength="150" required
+                            value="{{ old('title', optional($task)->title) }}" placeholder="Contoh: Input data transaksi pengadaan ke Acumatica">
+                        @error('title') <div class="wl-error">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="wl-field">
+                        <label class="wl-label" for="category">Kategori aktivitas <small>(opsional)</small></label>
+                        <select id="category" name="category" class="wl-select">
+                            <option value="">- Pilih kategori -</option>
+                            @foreach (\App\Models\WorkTask::CATEGORIES as $key => $label)
+                                <option value="{{ $key }}" {{ old('category', optional($task)->category) === $key ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        @error('category') <div class="wl-error">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="wl-field">
+                        <label class="wl-label" for="description">Deskripsi / rincian pekerjaan <span class="req">*</span></label>
+                        <textarea id="description" name="description" class="wl-textarea" maxlength="5000" required
+                            placeholder="Apa yang diinput, sumber datanya, atau hasil penyusunannya.">{{ old('description', optional($task)->description) }}</textarea>
+                        @error('description') <div class="wl-error">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="wl-field">
+                        <label class="wl-label">Jumlah output <small>(disarankan)</small></label>
+                        <div class="wl-qty">
+                            <input type="number" name="quantity" class="wl-input" min="0" max="1000000" step="1" placeholder="Contoh: 150"
+                                value="{{ old('quantity', optional($task)->quantity) }}">
+                            <input type="text" name="quantity_unit" class="wl-input" maxlength="40" list="wl-units" placeholder="Satuan: Dokumen / Baris Data / Invoice"
+                                value="{{ old('quantity_unit', optional($task)->quantity_unit) }}">
+                            <datalist id="wl-units"><option value="Dokumen"><option value="Baris Data"><option value="Invoice"></datalist>
+                        </div>
+                        @error('quantity') <div class="wl-error">{{ $message }}</div> @enderror
+                        @error('quantity_unit') <div class="wl-error">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="wl-field">
+                        <label class="wl-label">Status pengerjaan <span class="req">*</span></label>
+                        <div style="display: flex; gap: 18px; flex-wrap: wrap;">
+                            @foreach (\App\Models\WorkTask::WORK_STATUSES as $key => $label)
+                                <label style="display: inline-flex; gap: 6px; align-items: center; font-weight: 600; cursor: pointer;">
+                                    <input type="radio" name="work_status" value="{{ $key }}" required
+                                        {{ old('work_status', optional($task)->work_status ?: 'done') === $key ? 'checked' : '' }}> {{ $label }}
+                                </label>
+                            @endforeach
+                        </div>
+                        @error('work_status') <div class="wl-error">{{ $message }}</div> @enderror
+                    </div>
+                @else
                 <div class="wl-field">
                     <label class="wl-label" for="title">Judul tugas <span class="req">*</span></label>
                     <input type="text" id="title" name="title" class="wl-input" maxlength="150" required
@@ -44,15 +109,29 @@
 
                 @if (!$isEdit || $task->is_self)
                     @php($startLimit = ($me = auth()->user())->internship_start_date ? \Carbon\Carbon::parse($me->internship_start_date) : null)
-                    <div class="wl-field" style="max-width: 260px;">
-                        <label class="wl-label" for="worked_on">Dikerjakan pada <span class="req">*</span></label>
-                        <input type="date" id="worked_on" name="worked_on" class="wl-input" required
-                            max="{{ now()->toDateString() }}"
-                            @if ($startLimit && $startLimit->lte(now())) min="{{ $startLimit->toDateString() }}" @endif
-                            value="{{ old('worked_on', optional(optional($task)->worked_on)->toDateString() ?: now()->toDateString()) }}">
-                        <div class="wl-hint">Pilih tanggal saat pekerjaan ini dikerjakan. Pekerjaan beberapa hari lalu juga bisa dicatat.</div>
-                        @error('worked_on') <div class="wl-error">{{ $message }}</div> @enderror
+                    @php($defaultStart = optional($isEdit ? $task->workedDate() : now())->toDateString())
+                    @php($defaultEnd = $isEdit ? optional($task->endDate() ?: $task->workedDate())->toDateString() : now()->toDateString())
+                    <div class="wl-form-grid">
+                        <div class="wl-field">
+                            <label class="wl-label" for="start_date">Tanggal mulai <span class="req">*</span></label>
+                            <input type="date" id="start_date" name="start_date" class="wl-input" required data-wl-date-start
+                                max="{{ now()->toDateString() }}"
+                                @if ($startLimit && $startLimit->lte(now())) min="{{ $startLimit->toDateString() }}" @endif
+                                value="{{ old('start_date', $defaultStart) }}">
+                            @error('start_date') <div class="wl-error">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="wl-field">
+                            <label class="wl-label" for="end_date">Tanggal selesai <span class="req">*</span></label>
+                            <input type="date" id="end_date" name="end_date" class="wl-input" required data-wl-date-end
+                                max="{{ now()->toDateString() }}"
+                                min="{{ old('start_date', $defaultStart) }}"
+                                value="{{ old('end_date', $defaultEnd) }}">
+                            @error('end_date') <div class="wl-error">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="wl-hint full" style="grid-column: 1 / -1; margin-top: -6px;">Pilih rentang tanggal saat pekerjaan ini dikerjakan. Pekerjaan beberapa hari lalu juga bisa dicatat; jika hanya satu hari, isi kedua tanggal sama.</div>
                     </div>
+                @endif
+
                 @endif
 
                 @if ($isEdit)
@@ -95,7 +174,7 @@
                     </div>
                 @endif
 
-                @unless ($isEdit)
+                @if (!$isEdit && $type !== 'daily')
                     <hr class="wl-divider">
                     <div class="wl-section-head">
                         <div>
@@ -122,11 +201,11 @@
                         </div>
                     @endif
                     @error('partners') <div class="wl-error">{{ $message }}</div> @enderror
-                @endunless
+                @endif
             </div>
 
             <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                <a href="{{ $isEdit ? route('user.work-logs.show', $task) : route('user.work-logs.index') }}" class="wl-btn">Batal</a>
+                <a href="{{ $isEdit ? route('user.work-logs.show', $task) : route('user.work-logs.index', ['type' => $type]) }}" class="wl-btn">Batal</a>
                 <button type="submit" class="wl-btn wl-btn--primary">{{ $isEdit ? 'Simpan perubahan' : 'Kirim untuk disetujui' }}</button>
             </div>
         </form>
@@ -161,5 +240,5 @@
 @endsection
 
 @section('script')
-    <script src="{{ URL::asset('js/work-log.js') }}?v=10"></script>
+    <script src="{{ URL::asset('js/work-log.js') }}?v=11"></script>
 @endsection

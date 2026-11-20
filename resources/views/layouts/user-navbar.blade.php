@@ -55,7 +55,7 @@
 
     <a class="cs-side-link {{ $activeTab === 'worklog' ? 'active' : '' }}"
         href="{{ route('user.work-logs.index') }}">
-        <i class="mdi mdi-briefcase-check-outline"></i> Log Pekerjaan
+        <i class="mdi mdi-briefcase-check"></i> Log Pekerjaan
     </a>
 
     <div class="cs-side-group {{ $isAttendanceHistoryActive ? 'has-active' : '' }}">

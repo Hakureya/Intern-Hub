@@ -6,11 +6,17 @@ use Illuminate\Database\Eloquent\Model;
 
 class WorkTaskAttachment extends Model
 {
-    protected $fillable = ['work_task_assignee_id', 'type', 'name', 'path', 'url'];
+    protected $fillable = ['work_task_assignee_id', 'type', 'name', 'path', 'url', 'uploaded_by'];
 
     public function assignee()
     {
         return $this->belongsTo(WorkTaskAssignee::class, 'work_task_assignee_id');
+    }
+
+    /** Pengguna yang mengunggah lampiran ini (untuk keterangan "Diupload oleh"). */
+    public function uploader()
+    {
+        return $this->belongsTo(User::class, 'uploaded_by');
     }
 
     public function isLink(): bool

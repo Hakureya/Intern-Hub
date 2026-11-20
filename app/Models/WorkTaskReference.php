@@ -7,7 +7,7 @@ class WorkTaskReference extends WorkTaskAttachment
 {
     protected $table = 'work_task_references';
 
-    protected $fillable = ['work_task_id', 'type', 'name', 'path', 'url'];
+    protected $fillable = ['work_task_id', 'type', 'name', 'path', 'url', 'uploaded_by'];
 
     public function task()
     {

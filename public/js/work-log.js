@@ -77,9 +77,14 @@
         var input = e.target;
 
         // pilih file dari perangkat -> langsung unggah (boleh banyak file)
-        if (input.id === 'wl-upload-input' && input.files && input.files.length) {
+        if ((input.id === 'wl-upload-input' || (input.hasAttribute && input.hasAttribute('data-wl-autosubmit'))) && input.files && input.files.length) {
             input.form.submit();
             return;
+        }
+
+        // rentang tanggal: tanggal selesai tidak boleh sebelum tanggal mulai
+        if (input.matches && input.matches('[data-wl-date-start]')) {
+            syncDateRange(input.closest('form') || document);
         }
         if (input.matches && input.matches('.wl-pcard input, .pc-pick input')) {
             input.closest('.wl-pcard, .pc-pick').classList.toggle('is-selected', input.checked);
@@ -246,8 +251,45 @@
         render();
     }
 
+    // Form status peserta (mentor): memilih "Batal" memunculkan popup konfirmasi sebelum disimpan (lewat data-confirm milik cs-dialog).
+    function syncCancelConfirm(form) {
+        var sel = form.querySelector('select[name=status]');
+        if (!sel) { return; }
+        if (sel.value === 'batal') {
+            form.setAttribute('data-confirm', form.getAttribute('data-wl-cancel-confirm'));
+            form.setAttribute('data-confirm-title', 'Batalkan tugas?');
+            form.setAttribute('data-confirm-ok', 'Ya, batalkan tugas');
+            form.setAttribute('data-confirm-level', 'warning');
+            form.setAttribute('data-confirm-tone', 'danger');
+        } else {
+            ['data-confirm', 'data-confirm-title', 'data-confirm-ok', 'data-confirm-level', 'data-confirm-tone'].forEach(function (a) { form.removeAttribute(a); });
+        }
+    }
+    document.addEventListener('change', function (e) {
+        var sel = e.target;
+        if (sel && sel.matches && sel.matches('form[data-wl-cancel-confirm] select[name=status]')) { syncCancelConfirm(sel.form); }
+    });
+
+    // Batasi input tanggal selesai [data-wl-date-end] agar minimal sama dengan tanggal mulai [data-wl-date-start].
+    function syncDateRange(scope) {
+        var start = scope.querySelector('[data-wl-date-start]');
+        var end = scope.querySelector('[data-wl-date-end]');
+        if (!start || !end) { return; }
+        if (start.value) {
+            end.min = start.value;
+            if (end.value && end.value < start.value) { end.value = start.value; }
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         tickCountdown();
+        // HP: kartu filter berupa strip yang bisa digeser; pastikan yang aktif terlihat
+        [].forEach.call(document.querySelectorAll('.wl-stats'), function (strip) {
+            var on = strip.querySelector('.is-active');
+            if (on && strip.scrollWidth > strip.clientWidth) { strip.scrollLeft = Math.max(0, on.offsetLeft - 12); }
+        });
+        [].forEach.call(document.querySelectorAll('form[data-wl-cancel-confirm]'), syncCancelConfirm);
+        [].forEach.call(document.querySelectorAll('form'), function (f) { if (f.querySelector('[data-wl-date-start]')) { syncDateRange(f); } });
         [].forEach.call(document.querySelectorAll('[data-wl-attach]'), initAttach);
         [].forEach.call(document.querySelectorAll('[data-wl-picker]'), refreshCount);
     });

@@ -15,10 +15,31 @@
         data-csrf="{{ csrf_token() }}">
         <div class="wc-inner">
             <header class="wc-head">
-                <span class="wc-head-ic"><i class="mdi mdi-chat-processing-outline"></i></span>
-                <div>
+                @php($wlLogo = asset('assets/images/logo-plnsc.png'))
+                <div class="wl-mates">
+                    @if (!empty($people))
+                        <div class="wl-mates-list">
+                            @foreach (array_slice($people, 0, 6) as $p)
+                                <button type="button" class="wl-mate wl-t{{ $p['tone'] ?? 0 }}" aria-label="{{ $p['name'] }}"
+                                    data-people="{{ json_encode([$p], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}" data-logo="{{ $wlLogo }}">
+                                    @if (!empty($p['photo']))
+                                        <img src="{{ $p['photo'] }}" alt="">
+                                    @else
+                                        {{ $p['initials'] }}
+                                    @endif
+                                </button>
+                            @endforeach
+                            @if (count($people) > 6)
+                                <button type="button" class="wl-mate wl-mate--more" aria-label="Rekan lainnya"
+                                    data-people="{{ json_encode(array_slice($people, 6), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}" data-logo="{{ $wlLogo }}">
+                                    +{{ count($people) - 6 }}
+                                </button>
+                            @endif
+                        </div>
+                    @else
+                        <span class="wl-mates-label wl-mates-label--solo"><i class="mdi mdi-account-outline"></i> Dikerjakan sendiri</span>
+                    @endif
                     <b>Diskusi tugas</b>
-                    <small>Perubahan tugas juga tercatat di sini</small>
                 </div>
                 <button type="button" class="wc-close" id="wcClose" aria-label="Tutup diskusi"><i class="mdi mdi-chevron-right"></i></button>
             </header>
@@ -30,15 +51,40 @@
             </div>
 
             <div class="wc-error" id="wcError" hidden></div>
-            <div class="wc-tray" id="wcTray" hidden></div>
-
             <form class="wc-form" id="wcForm" autocomplete="off">
-                <button type="button" class="wc-attach" id="wcAttach" aria-label="Lampirkan foto atau file"><i class="mdi mdi-paperclip"></i></button>
-                <input type="file" id="wcFiles" multiple hidden
-                    accept="image/*,video/mp4,video/webm,video/quicktime,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip">
+                <div class="wc-attach-wrap">
+                    <button type="button" class="wc-attach" id="wcAttach" aria-label="Lampirkan file" aria-haspopup="true" aria-expanded="false" aria-controls="wcAttachMenu"><i class="mdi mdi-paperclip"></i></button>
+                    <div class="wc-attach-menu" id="wcAttachMenu" role="menu" hidden>
+                        <button type="button" role="menuitem" data-wc-pick="media">
+                            <span class="wc-ic wc-ic--media"><i class="mdi mdi-image-multiple-outline"></i></span> Foto atau video
+                        </button>
+                        <button type="button" role="menuitem" data-wc-pick="doc">
+                            <span class="wc-ic wc-ic--doc"><i class="mdi mdi-file-document-outline"></i></span> Dokumen
+                        </button>
+                    </div>
+                </div>
+                <input type="file" id="wcFilesMedia" multiple hidden
+                    accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime,.jpg,.jpeg,.png,.gif,.webp,.mp4,.webm,.mov">
+                <input type="file" id="wcFilesDoc" multiple hidden
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip">
                 <textarea id="wcInput" rows="1" maxlength="4000" placeholder="Tulis pesan..." aria-label="Tulis pesan"></textarea>
                 <button type="submit" class="wc-send" id="wcSend" aria-label="Kirim"><i class="mdi mdi-send"></i></button>
             </form>
+
+            {{-- Pratinjau lampiran + keterangan sebelum dikirim (seperti WhatsApp) --}}
+            <div class="wc-compose" id="wcCompose" role="dialog" aria-label="Kirim lampiran" hidden>
+                <header class="wc-compose-head">
+                    <button type="button" class="wc-compose-x" id="wcComposeClose" aria-label="Batalkan"><i class="mdi mdi-close"></i></button>
+                    <div><b id="wcComposeTitle">Kirim lampiran</b><small id="wcComposeSub"></small></div>
+                </header>
+                <div class="wc-compose-stage" id="wcStage"></div>
+                <div class="wc-compose-error" id="wcComposeError" hidden></div>
+                <div class="wc-compose-strip" id="wcStrip"></div>
+                <div class="wc-compose-foot">
+                    <textarea id="wcCaption" rows="1" maxlength="4000" placeholder="Tambahkan keterangan..." aria-label="Keterangan lampiran"></textarea>
+                    <button type="button" class="wc-send" id="wcComposeSend" aria-label="Kirim lampiran"><i class="mdi mdi-send"></i><em id="wcComposeCount" hidden></em></button>
+                </div>
+            </div>
         </div>
     </aside>
 </div>

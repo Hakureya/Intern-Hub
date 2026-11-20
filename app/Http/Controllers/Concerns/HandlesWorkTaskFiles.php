@@ -2,12 +2,16 @@
 
 namespace App\Http\Controllers\Concerns;
 
+use App\Models\User;
 use App\Models\WorkTask;
 use App\Models\WorkTaskAssignee;
 use App\Models\WorkTaskAttachment;
 use App\Models\WorkTaskReference;
+use App\Support\TaskHistory;
+use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 trait HandlesWorkTaskFiles
 {
@@ -64,7 +68,7 @@ trait HandlesWorkTaskFiles
 
         foreach ($this->attachmentTargets($task, $assignee) as $target) {
             foreach ($items as $item) {
-                WorkTaskAttachment::create($item + ['work_task_assignee_id' => $target->id]);
+                WorkTaskAttachment::create($item + ['work_task_assignee_id' => $target->id, 'uploaded_by' => auth()->id()]);
             }
         }
 
@@ -97,6 +101,7 @@ trait HandlesWorkTaskFiles
                 'name' => $a->name,
                 'path' => $a->path,
                 'url' => $a->url,
+                'uploaded_by' => $a->uploaded_by, // salinan tetap tercatat diunggah oleh pengunggah aslinya
             ]);
         }
     }
@@ -139,7 +144,7 @@ trait HandlesWorkTaskFiles
     protected function addReferences(WorkTask $task, array $storedFiles, array $links): void
     {
         foreach ($storedFiles as $file) {
-            WorkTaskReference::create(['work_task_id' => $task->id, 'type' => 'file', 'name' => $file['name'], 'path' => $file['path'], 'url' => null]);
+            WorkTaskReference::create(['work_task_id' => $task->id, 'type' => 'file', 'name' => $file['name'], 'path' => $file['path'], 'url' => null, 'uploaded_by' => auth()->id()]);
         }
         foreach ($links as $l) {
             WorkTaskReference::create([
@@ -148,8 +153,62 @@ trait HandlesWorkTaskFiles
                 'name' => $l['label'] ?: (parse_url($l['url'], PHP_URL_HOST) ?: $l['url']),
                 'path' => null,
                 'url' => $l['url'],
+                'uploaded_by' => auth()->id(),
             ]);
         }
+    }
+
+    /**
+     * Tambah referensi cepat dari halaman detail (file dan/atau satu tautan), dipakai bersama oleh peserta dan mentor/admin.
+     * Tidak mengubah status penyelesaian; tercatat di Riwayat. Mengembalikan jumlah referensi yang ditambahkan.
+     */
+    protected function quickAddReferences(Request $request, WorkTask $task, User $actor): int
+    {
+        $request->validate([
+            'reference_files' => 'nullable|array|max:10',
+            'reference_files.*' => 'file|max:10240|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,zip',
+            'reference_link' => 'nullable|url|max:500',
+            'reference_link_label' => 'nullable|string|max:120',
+        ], [
+            'reference_files.max' => 'Maksimal 10 file referensi sekali unggah.',
+            'reference_files.*.max' => 'Ukuran tiap file maksimal 10 MB.',
+            'reference_files.*.mimes' => 'Format file harus pdf, doc, xls, ppt, jpg, png, atau zip.',
+            'reference_files.*.uploaded' => 'File gagal diunggah. Pastikan ukuran tidak melebihi batas server.',
+            'reference_link.url' => 'Tautan harus diawali http:// atau https://.',
+        ]);
+
+        if (! $request->hasFile('reference_files') && ! $request->filled('reference_link')) {
+            throw ValidationException::withMessages(['reference_files' => 'Pilih file atau isi tautan referensi terlebih dahulu.']);
+        }
+
+        $storedFiles = $this->storeReferenceFiles((array) $request->file('reference_files', []));
+        $links = $this->pairLinks(
+            $request->filled('reference_link') ? [$request->input('reference_link')] : [],
+            [$request->input('reference_link_label')]
+        );
+
+        $this->addReferences($task, $storedFiles, $links);
+
+        $added = array_merge(
+            array_map(function ($f) { return $f['name']; }, $storedFiles),
+            array_map(function ($l) { return $l['label'] ?: $l['url']; }, $links)
+        );
+        TaskHistory::record($task, $actor, [TaskHistory::note('Lampiran referensi', 'Menambah: ' . implode(', ', $added) . '.')]);
+
+        return count($added);
+    }
+
+    /** Hapus satu referensi (beserta file fisiknya bila tak dipakai lagi) dan catat di Riwayat. */
+    protected function quickRemoveReference(WorkTask $task, WorkTaskReference $reference, User $actor): void
+    {
+        $name = $reference->name;
+        $path = $reference->path;
+        $uploader = $reference->uploader;
+        $suffix = ($uploader && (int) $uploader->id !== (int) $actor->id) ? ' (diunggah ' . $uploader->name . ')' : '';
+        $reference->delete();
+        $this->deleteReferenceFileIfUnused($path);
+
+        TaskHistory::record($task, $actor, [TaskHistory::note('Lampiran referensi', 'Menghapus: ' . $name . $suffix . '.')]);
     }
 
     protected function deleteReferenceFileIfUnused(?string $path): void

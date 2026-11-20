@@ -4,12 +4,12 @@
     <i class="mdi {{ $att->icon() }} wl-work-ic"></i>
     <div class="wl-work-name">
         @if ($isLink)
-            <a href="{{ $att->url }}" target="_blank" rel="noopener noreferrer">{{ $att->name }}</a>
-            <small>{{ \Illuminate\Support\Str::limit($att->url, 60) }}</small>
+            <a href="{{ $att->url }}" target="_blank" rel="noopener noreferrer" title="{{ $att->url }}">{{ $att->name }}</a>
         @else
-            <a href="{{ route('work-logs.file.attachment', $att) }}" target="_blank">{{ $att->name }}</a>
+            <a href="{{ route('work-logs.file.attachment', $att) }}" target="_blank" title="{{ $att->name }}">{{ $att->name }}</a>
         @endif
     </div>
+    @include('includes.work-uploader', ['by' => $att->uploader ?: optional($att->assignee)->user, 'at' => $att->created_at])
 
     @if (!empty($manage))
         <div class="wl-menu-wrap">
@@ -30,7 +30,9 @@
                 </form>
             </div>
         </div>
-    @elseif (!$isLink)
+    @elseif ($isLink)
+        <a class="wl-work-dl" href="{{ $att->url }}" target="_blank" rel="noopener noreferrer">Buka</a>
+    @else
         <a class="wl-work-dl" href="{{ route('work-logs.file.attachment', ['attachment' => $att, 'download' => 1]) }}">Unduh</a>
     @endif
 </div>

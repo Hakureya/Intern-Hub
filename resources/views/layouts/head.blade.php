@@ -27,17 +27,17 @@
         display: block;
     }
 </style>
-<link href="{{ URL::asset('assets/css/icons.css') }}" rel="stylesheet" type="text/css" />
-<link href="{{ URL::asset('assets/css/style.css') }}" rel="stylesheet" type="text/css" />
+<link href="{{ URL::asset('assets/css/icons.css') }}?v=mdi7447" rel="stylesheet" type="text/css" />
+<link href="{{ URL::asset('assets/css/style.css') }}?v=mdi7447" rel="stylesheet" type="text/css" />
 <link href="{{ URL::asset('assets/css/mobile-overrides.css') }}" rel="stylesheet" type="text/css" />
 
 <!-- Cerah theme: font + design system -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link href="{{ URL::asset('css/cerah.css') }}?v=3" rel="stylesheet" type="text/css" />
+<link href="{{ URL::asset('css/cerah.css') }}?v=4" rel="stylesheet" type="text/css" />
 <link href="{{ URL::asset('css/cerah-admin.css') }}?v=1" rel="stylesheet" type="text/css" />
-<link href="{{ URL::asset('css/people-card.css') }}?v=5" rel="stylesheet" type="text/css" />
+<link href="{{ URL::asset('css/people-card.css') }}?v=8" rel="stylesheet" type="text/css" />
 
 {{-- <link href="{{ URL::asset('plugins/sweet-alert2/sweetalert2.min.css') }}" rel="stylesheet" type="text/css"> --}}
 <link href="{{ asset('plugins/sweetalert.min.css') }}" rel="stylesheet">

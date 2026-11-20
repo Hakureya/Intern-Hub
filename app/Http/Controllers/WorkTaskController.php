@@ -7,6 +7,7 @@ use App\Models\Division;
 use App\Models\User;
 use App\Models\WorkTask;
 use App\Models\WorkTaskAssignee;
+use App\Models\WorkTaskReference;
 use App\Models\WorkTaskAttachment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +24,10 @@ class WorkTaskController extends Controller
         $viewer = auth()->user();
         $month = $this->monthParam($request);
         $search = trim((string) $request->input('q', ''));
+        $status = (string) $request->input('status', '');
+        $status = in_array($status, ['belum', 'menunggu', 'sudah', 'batal'], true) ? $status : '';
         $divisionId = $viewer->isMentor() ? 0 : (int) $request->input('division_id');
+        $type = WorkTask::typeParam($request->input('type'));
 
         $participants = User::peserta()->inScope($viewer)->with('division')->orderByName()->get();
         $userId = (int) $request->input('user_id');
@@ -34,11 +38,9 @@ class WorkTaskController extends Controller
         $tasks = WorkTask::with(['assignees.user.division', 'assignees.user.mentor', 'creator'])
             ->visibleTo($viewer)
             ->inMonth($month)
+            ->where('work_tasks.type', $type)
             ->when($search !== '', function ($q) use ($search) {
-                $q->where(function ($w) use ($search) {
-                    $w->where('work_tasks.title', 'like', '%' . $search . '%')
-                        ->orWhere('work_tasks.description', 'like', '%' . $search . '%');
-                });
+                $q->search($search);
             })
             ->when($userId, function ($q) use ($userId) {
                 $q->whereHas('assignees', function ($a) use ($userId) {
@@ -50,7 +52,7 @@ class WorkTaskController extends Controller
                     $u->where('users.division_id', $divisionId);
                 });
             })
-            ->orderByRaw('COALESCE(work_tasks.worked_on, DATE(work_tasks.created_at)) desc')
+            ->orderByRaw('COALESCE(work_tasks.start_date, work_tasks.worked_on, DATE(work_tasks.created_at)) desc')
             ->orderByDesc('work_tasks.created_at')
             ->orderByDesc('work_tasks.id')
             ->get();
@@ -70,11 +72,37 @@ class WorkTaskController extends Controller
                     'belum' => $assignees->where('status', WorkTaskAssignee::BELUM)->count(),
                     'menunggu' => $assignees->where('status', WorkTaskAssignee::MENUNGGU)->count(),
                     'sudah' => $assignees->where('status', WorkTaskAssignee::SUDAH)->count(),
+                    'batal' => $assignees->where('status', WorkTaskAssignee::BATAL)->count(),
                 ],
+                'allCancelled' => $assignees->isNotEmpty() && $assignees->every(function ($a) {
+                    return $a->status === WorkTaskAssignee::BATAL;
+                }),
             ];
         });
 
-        // Kartu dikelompokkan per tanggal (tugas mandiri: tanggal dikerjakan, lainnya: tanggal dibuat), terbaru di atas.
+        // Ringkasan filter status: jumlah tugas yang memiliki minimal satu peserta dengan status tsb
+        // (mengikuti bulan, pencarian, peserta, dan divisi yang dipilih; tidak mengikuti filter status).
+        // Jumlah tugas per bentuk (badge pada tab proyek / harian), mengikuti bulan.
+        $typeCounts = [
+            WorkTask::TYPE_PROJECT => WorkTask::visibleTo($viewer)->inMonth($month)->where('work_tasks.type', WorkTask::TYPE_PROJECT)->count(),
+            WorkTask::TYPE_DAILY => WorkTask::visibleTo($viewer)->inMonth($month)->where('work_tasks.type', WorkTask::TYPE_DAILY)->count(),
+        ];
+
+        $stats = [
+            'semua' => $rows->count(),
+            'sudah' => $rows->filter(function ($r) { return $r['counts']['sudah'] > 0; })->count(),
+            'menunggu' => $rows->filter(function ($r) { return $r['counts']['menunggu'] > 0; })->count(),
+            'belum' => $rows->filter(function ($r) { return $r['counts']['belum'] > 0; })->count(),
+            'batal' => $rows->filter(function ($r) { return $r['counts']['batal'] > 0; })->count(),
+        ];
+
+        if ($status !== '') {
+            $rows = $rows->filter(function ($r) use ($status) {
+                return $r['counts'][$status] > 0;
+            })->values();
+        }
+
+        // Kartu dikelompokkan per tanggal mulai (tugas mentor: tanggal dibuat, tugas mandiri: tanggal mulai isian peserta), terbaru di atas.
         $groups = $rows->groupBy(function ($r) {
             return $r['task']->workedDate()->toDateString();
         });
@@ -84,6 +112,10 @@ class WorkTaskController extends Controller
             'groups' => $groups,
             'month' => $month,
             'search' => $search,
+            'status' => $status,
+            'type' => $type,
+            'typeCounts' => $typeCounts,
+            'stats' => $stats,
             'userId' => $userId,
             'divisionId' => $divisionId,
             'participants' => $participants,
@@ -111,7 +143,7 @@ class WorkTaskController extends Controller
         $data = $request->validate([
             'title' => 'required|string|max:150',
             'description' => 'required|string|max:5000',
-            'deadline' => 'nullable|date|after_or_equal:today',
+            'deadline' => 'required|date|after_or_equal:today',
             'reference_files' => 'nullable|array|max:10',
             'reference_files.*' => 'file|max:10240|mimes:' . self::FILE_MIMES,
             'reference_links' => 'nullable|array|max:10',
@@ -124,6 +156,8 @@ class WorkTaskController extends Controller
         ], [
             'participants.required' => 'Pilih minimal satu peserta magang.',
             'participants.min' => 'Pilih minimal satu peserta magang.',
+            'deadline.required' => 'Tenggat wajib diisi.',
+            'deadline.date' => 'Tenggat tidak valid.',
             'deadline.after_or_equal' => 'Tenggat tidak boleh sebelum hari ini.',
         ] + $this->referenceMessages());
 
@@ -141,9 +175,14 @@ class WorkTaskController extends Controller
 
         DB::transaction(function () use ($data, $viewer, $storedFiles, $links, $allowed) {
             $task = WorkTask::create([
+                'type' => WorkTask::TYPE_PROJECT,
+                'code' => WorkTask::generateCode(WorkTask::TYPE_PROJECT, WorkTask::divisionIdFor($viewer->id, null, $allowed)),
                 'title' => trim($data['title']),
                 'description' => trim($data['description']),
-                'deadline' => $data['deadline'] ?? null,
+                'deadline' => $data['deadline'],
+                // Tanggal mulai = saat tugas dibuat; tanggal selesai = tenggat.
+                'start_date' => now()->toDateString(),
+                'end_date' => $data['deadline'],
                 'require_attachment' => (bool) $data['require_attachment'],
                 'is_self' => false,
                 'created_by' => $viewer->id,
@@ -182,7 +221,7 @@ class WorkTaskController extends Controller
         $viewer = auth()->user();
         abort_unless($task->isVisibleTo($viewer), 403);
 
-        $task->load('creator', 'references', 'assignees.attachments');
+        $task->load('creator', 'references.uploader', 'assignees.attachments.uploader');
         $assignees = $task->assigneesFor($viewer);
 
         return view('admin.work-logs.show', [
@@ -194,6 +233,11 @@ class WorkTaskController extends Controller
                 })->values()->all()
                 : [],
             'canEdit' => $task->canBeEditedBy($viewer),
+            'canCancel' => $task->canBeCancelledBy($viewer),
+            'canAddRef' => $task->canAddReferencesBy($viewer),
+            'allCancelled' => $assignees->isNotEmpty() && $assignees->every(function ($a) {
+                return $a->status === WorkTaskAssignee::BATAL;
+            }),
         ]);
     }
 
@@ -203,7 +247,7 @@ class WorkTaskController extends Controller
         abort_unless($task->isVisibleTo($viewer), 403);
 
         if (! $task->canBeEditedBy($viewer)) {
-            flash()->error('Tidak bisa diedit', 'Tugas hanya bisa diedit oleh pembuatnya dan sebelum tenggat.');
+            flash()->error('Tidak bisa diedit', 'Tugas ini tidak bisa Anda edit.');
 
             return redirect()->route('work-logs.show', $task);
         }
@@ -222,30 +266,36 @@ class WorkTaskController extends Controller
         abort_unless($task->isVisibleTo($viewer), 403);
 
         if (! $task->canBeEditedBy($viewer)) {
-            flash()->error('Tidak bisa diedit', 'Tugas hanya bisa diedit oleh pembuatnya dan sebelum tenggat.');
+            flash()->error('Tidak bisa diedit', 'Tugas ini tidak bisa Anda edit.');
 
             return redirect()->route('work-logs.show', $task);
+        }
+
+        // Tugas yang dicatat peserta: yang bisa diubah mentor hanya judul, deskripsi, dan rentang tanggal.
+        if ($task->is_self) {
+            return $this->updateSelfTask($request, $task, $viewer);
         }
 
         $data = $request->validate([
             'title' => 'required|string|max:150',
             'description' => 'required|string|max:5000',
-            'deadline' => 'nullable|date',
-            'reference_files' => 'nullable|array|max:10',
-            'reference_files.*' => 'file|max:10240|mimes:' . self::FILE_MIMES,
-            'reference_links' => 'nullable|array|max:10',
-            'reference_links.*' => 'nullable|url|max:500',
-            'reference_link_labels' => 'nullable|array',
-            'reference_link_labels.*' => 'nullable|string|max:120',
-            'remove_references' => 'nullable|array',
-            'remove_references.*' => 'integer',
+            'deadline' => 'required|date|after_or_equal:' . $task->workedDate()->toDateString(),
             'require_attachment' => 'required|in:0,1',
             'participants' => 'required|array|min:1',
             'participants.*' => 'integer',
         ], [
             'participants.required' => 'Pilih minimal satu peserta magang.',
             'participants.min' => 'Pilih minimal satu peserta magang.',
-        ] + $this->referenceMessages());
+            'deadline.required' => 'Tenggat wajib diisi.',
+            'deadline.date' => 'Tenggat tidak valid.',
+            'deadline.after_or_equal' => 'Tenggat tidak boleh sebelum tanggal mulai tugas.',
+        ]);
+
+        // Tenggat baru (bila diubah) tidak boleh di masa lalu.
+        $oldDeadlineDate = optional($task->deadline)->toDateString();
+        if ($data['deadline'] !== $oldDeadlineDate && \Carbon\Carbon::parse($data['deadline'])->lt(\Carbon\Carbon::today())) {
+            return back()->withInput()->withErrors(['deadline' => 'Tenggat tidak boleh sebelum hari ini.']);
+        }
 
         // Peserta yang boleh dikelola viewer (mentor: hanya divisinya).
         $allowedIds = User::peserta()->inScope($viewer)->pluck('users.id')->map(function ($id) { return (int) $id; })->all();
@@ -266,17 +316,16 @@ class WorkTaskController extends Controller
         $update = [
             'title' => trim($data['title']),
             'description' => trim($data['description']),
-            'deadline' => $data['deadline'] ?? null,
+            'deadline' => $data['deadline'],
+            // Tanggal selesai selalu mengikuti tenggat; tanggal mulai tetap (sejak tugas dibuat).
+            'end_date' => $data['deadline'],
             'require_attachment' => (bool) $data['require_attachment'],
         ];
+        if (! $task->start_date) {
+            $update['start_date'] = $task->workedDate()->toDateString();
+        }
 
-        // Referensi: hapus yang ditandai, tambah file/tautan baru (boleh banyak).
-        $dropRefs = $task->references()->whereIn('id', array_map('intval', $data['remove_references'] ?? []))->get();
-        $dropRefPaths = $dropRefs->pluck('path')->filter()->unique()->all();
-        $storedFiles = $this->storeReferenceFiles((array) $request->file('reference_files', []));
-        $links = $this->pairLinks($data['reference_links'] ?? [], $data['reference_link_labels'] ?? []);
-
-        // Catatan perubahan untuk riwayat + ruang chat (dihitung sebelum data diubah).
+        // Catatan perubahan untuk popup Riwayat (dihitung sebelum data diubah).
         $fmtDate = function ($value) {
             return $value ? \Carbon\Carbon::parse($value)->locale('id')->translatedFormat('d M Y') : 'Tanpa tenggat';
         };
@@ -288,22 +337,12 @@ class WorkTaskController extends Controller
             $changes[] = \App\Support\TaskHistory::change('Deskripsi', $task->description, $update['description']);
         }
         $oldDeadline = optional($task->deadline)->toDateString();
-        $newDeadline = $update['deadline'] ? \Carbon\Carbon::parse($update['deadline'])->toDateString() : null;
+        $newDeadline = \Carbon\Carbon::parse($update['deadline'])->toDateString();
         if ($oldDeadline !== $newDeadline) {
-            $changes[] = \App\Support\TaskHistory::change('Tenggat', $fmtDate($oldDeadline), $fmtDate($newDeadline));
+            $changes[] = \App\Support\TaskHistory::change('Tanggal selesai (tenggat)', $fmtDate($oldDeadline), $fmtDate($newDeadline));
         }
         if ((bool) $task->require_attachment !== $update['require_attachment']) {
             $changes[] = \App\Support\TaskHistory::change('Bukti pengerjaan', $task->require_attachment ? 'Wajib melampirkan' : 'Opsional', $update['require_attachment'] ? 'Wajib melampirkan' : 'Opsional');
-        }
-        $refAdded = array_merge(
-            array_map(function ($f) { return $f['name']; }, $storedFiles),
-            array_map(function ($l) { return $l['label'] ?: $l['url']; }, $links)
-        );
-        $refRemoved = $dropRefs->pluck('name')->all();
-        if ($refAdded || $refRemoved) {
-            $changes[] = \App\Support\TaskHistory::note('Lampiran referensi', trim(
-                ($refAdded ? 'Menambah: ' . implode(', ', $refAdded) . '. ' : '') . ($refRemoved ? 'Menghapus: ' . implode(', ', $refRemoved) . '.' : '')
-            ));
         }
         if ($toAdd || $toRemove) {
             $addedNames = $toAdd ? User::whereIn('id', $toAdd)->pluck('name')->all() : [];
@@ -314,12 +353,10 @@ class WorkTaskController extends Controller
         }
 
         $removedPaths = [];
+        $statusMoves = [];
 
-        DB::transaction(function () use ($task, $update, $toAdd, $toRemove, $dropRefs, $storedFiles, $links, &$removedPaths) {
+        DB::transaction(function () use ($task, $update, $toAdd, $toRemove, &$removedPaths, &$statusMoves) {
             $task->update($update);
-
-            $task->references()->whereIn('id', $dropRefs->pluck('id'))->delete();
-            $this->addReferences($task, $storedFiles, $links);
 
             // Ubah daftar peserta: peserta yang dikeluarkan ikut kehilangan lampirannya.
             if ($toRemove) {
@@ -335,17 +372,15 @@ class WorkTaskController extends Controller
                 ]);
             }
 
-            // Setiap pengeditan: status seluruh peserta kembali "belum" (lampiran tetap).
-            $task->resetAssigneeStatuses();
+            // Setiap pengeditan: status seluruh peserta kembali "belum" (lampiran tetap; yang batal tetap batal).
+            $statusMoves = $task->resetAssigneeStatuses();
         });
 
-        \App\Support\TaskHistory::record($task, $viewer, $changes);
+        $task->unsetRelation('assignees');
+        \App\Support\TaskHistory::record($task, $viewer, array_merge($changes, \App\Support\TaskHistory::statusChanges($task, $statusMoves)));
 
         foreach (array_unique($removedPaths) as $path) {
             $this->deleteFileIfUnused($path);
-        }
-        foreach ($dropRefPaths as $path) {
-            $this->deleteReferenceFileIfUnused($path);
         }
 
         flash()->success('Berhasil', 'Tugas diperbarui. Status seluruh peserta dikembalikan menjadi Belum.');
@@ -353,7 +388,122 @@ class WorkTaskController extends Controller
         return redirect()->route('work-logs.show', $task);
     }
 
-    /** Mentor/admin mengubah status peserta: belum / menunggu / sudah. */
+    /** Mentor/admin mengedit tugas yang dicatat peserta: judul, deskripsi, dan rentang tanggal. */
+    private function updateSelfTask(Request $request, WorkTask $task, User $viewer)
+    {
+        $data = $request->validate([
+            'title' => 'required|string|max:150',
+            'description' => 'required|string|max:5000',
+            'start_date' => 'required|date|before_or_equal:today',
+            'end_date' => 'required|date|after_or_equal:start_date|before_or_equal:today',
+        ], [
+            'start_date.required' => 'Tanggal mulai wajib diisi.',
+            'start_date.date' => 'Tanggal mulai tidak valid.',
+            'start_date.before_or_equal' => 'Tanggal mulai tidak boleh melewati hari ini.',
+            'end_date.required' => 'Tanggal selesai wajib diisi.',
+            'end_date.date' => 'Tanggal selesai tidak valid.',
+            'end_date.after_or_equal' => 'Tanggal selesai tidak boleh sebelum tanggal mulai.',
+            'end_date.before_or_equal' => 'Tanggal selesai tidak boleh melewati hari ini.',
+        ]);
+
+        $fmt = function ($d) { return \Carbon\Carbon::parse($d)->locale('id')->translatedFormat('d M Y'); };
+        $update = [
+            'title' => trim($data['title']),
+            'description' => trim($data['description']),
+            'worked_on' => \Carbon\Carbon::parse($data['start_date'])->toDateString(),
+            'start_date' => \Carbon\Carbon::parse($data['start_date'])->toDateString(),
+            'end_date' => \Carbon\Carbon::parse($data['end_date'])->toDateString(),
+        ];
+
+        // Catatan perubahan untuk popup Riwayat (dihitung sebelum data diubah).
+        $changes = [];
+        if ((string) $task->title !== $update['title']) {
+            $changes[] = \App\Support\TaskHistory::change('Judul', $task->title, $update['title']);
+        }
+        if (trim((string) $task->description) !== $update['description']) {
+            $changes[] = \App\Support\TaskHistory::change('Deskripsi', $task->description, $update['description']);
+        }
+        $oldStart = $task->workedDate()->toDateString();
+        $oldEnd = optional($task->endDate())->toDateString();
+        if ($oldStart !== $update['start_date']) {
+            $changes[] = \App\Support\TaskHistory::change('Tanggal mulai', $fmt($oldStart), $fmt($update['start_date']));
+        }
+        if ($oldEnd !== $update['end_date']) {
+            $changes[] = \App\Support\TaskHistory::change('Tanggal selesai', $oldEnd ? $fmt($oldEnd) : '-', $fmt($update['end_date']));
+        }
+
+        $statusMoves = [];
+
+        DB::transaction(function () use ($task, $update, &$statusMoves) {
+            $task->update($update);
+
+            // Setiap pengeditan: status seluruh peserta kembali "belum" (lampiran tetap; yang batal tetap batal).
+            $statusMoves = $task->resetAssigneeStatuses();
+        });
+
+        \App\Support\TaskHistory::record($task, $viewer, array_merge($changes, \App\Support\TaskHistory::statusChanges($task, $statusMoves)));
+
+        flash()->success('Berhasil', 'Tugas peserta diperbarui. Status seluruh peserta dikembalikan menjadi Belum.');
+
+        return redirect()->route('work-logs.show', $task);
+    }
+
+    /** Mentor/admin menambah referensi materi (file / tautan) langsung dari detail tugas, sama seperti peserta. */
+    public function storeReferences(Request $request, WorkTask $task)
+    {
+        $viewer = auth()->user();
+        abort_unless($task->canAddReferencesBy($viewer), 403);
+
+        $count = $this->quickAddReferences($request, $task, $viewer);
+
+        flash()->success('Berhasil', $count . ' referensi ditambahkan.');
+
+        return redirect()->route('work-logs.show', $task);
+    }
+
+    /** Mentor/admin menghapus referensi apa pun pada tugas yang dapat dikelolanya (termasuk yang diunggah peserta). */
+    public function destroyReference(WorkTask $task, WorkTaskReference $reference)
+    {
+        $viewer = auth()->user();
+        abort_unless($task->canAddReferencesBy($viewer), 403);
+        abort_unless((int) $reference->work_task_id === (int) $task->id, 404);
+
+        $this->quickRemoveReference($task, $reference, $viewer);
+
+        flash()->success('Berhasil', 'Referensi dihapus.');
+
+        return redirect()->route('work-logs.show', $task);
+    }
+
+    /** Mentor/admin membatalkan tugas untuk seluruh peserta yang dikelolanya. Tugas tetap tampil di halaman mentor. */
+    public function cancel(Request $request, WorkTask $task)
+    {
+        $viewer = auth()->user();
+        abort_unless($task->isVisibleTo($viewer), 403);
+
+        if (! $task->canBeCancelledBy($viewer)) {
+            flash()->error('Tidak ada perubahan', 'Tugas ini sudah dibatalkan.');
+
+            return redirect()->route('work-logs.show', $task);
+        }
+
+        $request->validate(['review_note' => 'nullable|string|max:500']);
+        $note = $request->input('review_note');
+
+        $moves = $task->cancelAssignees($task->assigneesFor($viewer), $viewer, $note);
+
+        $changes = \App\Support\TaskHistory::statusChanges($task, $moves);
+        if ($note) {
+            $changes[] = \App\Support\TaskHistory::note('Catatan mentor', $note);
+        }
+        \App\Support\TaskHistory::record($task, $viewer, $changes);
+
+        flash()->success('Berhasil', 'Tugas dibatalkan. Tugas tidak lagi tampil di halaman peserta, ubah status peserta untuk mengaktifkannya kembali.');
+
+        return redirect()->route('work-logs.show', $task);
+    }
+
+    /** Mentor/admin mengubah status peserta: belum / menunggu / sudah / batal. */
     public function updateStatus(Request $request, WorkTask $task, WorkTaskAssignee $assignee)
     {
         $viewer = auth()->user();
@@ -363,7 +513,7 @@ class WorkTaskController extends Controller
         abort_unless($task->assigneesFor($viewer)->contains('id', $assignee->id), 403);
 
         $data = $request->validate([
-            'status' => 'required|in:belum,menunggu,sudah',
+            'status' => 'required|in:belum,menunggu,sudah,batal',
             'review_note' => 'nullable|string|max:500',
         ]);
 
@@ -374,8 +524,13 @@ class WorkTaskController extends Controller
         }
 
         $note = $data['review_note'] ?? null;
+        $oldStatus = $assignee->status;
+        $assignee->loadMissing('user');
 
-        if ($data['status'] === WorkTaskAssignee::SUDAH) {
+        if ($data['status'] === WorkTaskAssignee::BATAL) {
+            // Dibatalkan: hilang dari halaman peserta, tetap tampil di halaman mentor. Lampiran tetap tersimpan.
+            $task->cancelAssignees(collect([$assignee]), $viewer, $note);
+        } elseif ($data['status'] === WorkTaskAssignee::SUDAH) {
             $assignee->update([
                 'status' => WorkTaskAssignee::SUDAH,
                 'submitted_at' => $assignee->submitted_at ?: now(),
@@ -402,7 +557,17 @@ class WorkTaskController extends Controller
             ]);
         }
 
-        flash()->success('Berhasil', 'Status ' . optional($assignee->user)->name . ' diubah menjadi ' . WorkTaskAssignee::LABELS[$data['status']] . '.');
+        // Riwayat perubahan status (tampil di popup Riwayat).
+        $changes = \App\Support\TaskHistory::statusChanges($task, [[
+            'name' => optional($assignee->user)->name, 'old' => $oldStatus, 'new' => $data['status'],
+        ]]);
+        if ($note) {
+            $changes[] = \App\Support\TaskHistory::note('Catatan mentor', $note);
+        }
+        \App\Support\TaskHistory::record($task, $viewer, $changes);
+
+        flash()->success('Berhasil', 'Status ' . optional($assignee->user)->name . ' diubah menjadi ' . WorkTaskAssignee::LABELS[$data['status']] . '.'
+            . ($oldStatus === WorkTaskAssignee::BATAL ? ' Tugas kembali tampil di halaman peserta.' : ''));
 
         return redirect()->route('work-logs.show', $task);
     }

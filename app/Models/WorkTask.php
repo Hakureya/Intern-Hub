@@ -4,14 +4,39 @@ namespace App\Models;
 
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class WorkTask extends Model
 {
+    public const TYPE_PROJECT = 'project';
+    public const TYPE_DAILY = 'daily';
+
+    public const CATEGORIES = [
+        'input_data' => 'Input Data',
+        'validasi' => 'Penyusunan & Validasi Data',
+        'administrasi' => 'Administrasi',
+        'lainnya' => 'Lainnya',
+    ];
+
+    public const WORK_STATUSES = [
+        'done' => 'Selesai',
+        'progress' => 'Dalam Proses',
+        'blocked' => 'Terkendala',
+    ];
+
     protected $fillable = [
+        'type',
+        'code',
+        'category',
+        'quantity',
+        'quantity_unit',
+        'work_status',
         'title',
         'description',
         'deadline',
         'worked_on',
+        'start_date',
+        'end_date',
         'require_attachment',
         'reference_link',
         'reference_file_path',
@@ -23,9 +48,64 @@ class WorkTask extends Model
     protected $casts = [
         'deadline' => 'date',
         'worked_on' => 'date',
+        'start_date' => 'date',
+        'end_date' => 'date',
         'require_attachment' => 'boolean',
         'is_self' => 'boolean',
+        'quantity' => 'integer',
     ];
+
+    public function isDaily(): bool
+    {
+        return $this->type === self::TYPE_DAILY;
+    }
+
+    public function categoryLabel(): ?string
+    {
+        return self::CATEGORIES[$this->category] ?? null;
+    }
+
+    public function workStatusLabel(): ?string
+    {
+        return self::WORK_STATUSES[$this->work_status] ?? null;
+    }
+
+    /** Divisi untuk id tugas: divisi pembuat; bila kosong (mis. admin) divisi peserta pertama. */
+    public static function divisionIdFor($creatorId, $taskId = null, array $userIds = []): ?int
+    {
+        $div = DB::table('users')->where('id', $creatorId)->value('division_id');
+
+        if (! $div && $taskId) {
+            $div = DB::table('work_task_assignees')
+                ->join('users', 'users.id', '=', 'work_task_assignees.user_id')
+                ->where('work_task_assignees.work_task_id', $taskId)
+                ->whereNotNull('users.division_id')->orderBy('work_task_assignees.id')->value('users.division_id');
+        }
+        if (! $div && $userIds) {
+            $div = DB::table('users')->whereIn('id', $userIds)->whereNotNull('division_id')->orderBy('id')->value('division_id');
+        }
+
+        return $div ? (int) $div : null;
+    }
+
+    /**
+     * Id tugas unik per bentuk tugas + divisi: PRJ-<DIV>-0001 (proyek) / HRN-<DIV>-0001 (harian).
+     * Panggil di dalam transaksi agar nomor urut aman.
+     */
+    public static function generateCode(string $type, ?int $divisionId): string
+    {
+        $abbr = 'UMM';
+        if ($divisionId && ($div = Division::find($divisionId))) {
+            $abbr = $div->codeAbbr();
+        }
+
+        $prefix = ($type === self::TYPE_DAILY ? 'HRN' : 'PRJ') . '-' . $abbr . '-';
+
+        $last = DB::table('work_tasks')->where('code', 'like', $prefix . '%')->lockForUpdate()->orderByDesc('code')->value('code');
+        $next = $last ? ((int) substr($last, strlen($prefix))) + 1 : 1;
+
+        return $prefix . str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+    }
 
     public function creator()
     {
@@ -53,21 +133,94 @@ class WorkTask extends Model
     }
 
     /** Setiap pengeditan -> semua peserta kembali "belum". Lampiran peserta tetap tersimpan. */
-    public function resetAssigneeStatuses(): void
+    /**
+     * Setiap pengeditan: status seluruh peserta kembali "belum" (lampiran tetap).
+     * Peserta yang sudah dibatalkan tetap batal; hanya mentor yang bisa mengaktifkannya kembali.
+     * Mengembalikan daftar perubahan status (untuk riwayat): [['name' => ..., 'old' => ..., 'new' => 'belum'], ...].
+     */
+    public function resetAssigneeStatuses(): array
     {
-        $this->assignees()->update([
+        $moves = [];
+        foreach ($this->assignees()->with('user')->get() as $a) {   // data terbaru (peserta bisa baru ditambah/dikeluarkan)
+            if (! in_array($a->status, [WorkTaskAssignee::MENUNGGU, WorkTaskAssignee::SUDAH], true)) {
+                continue;
+            }
+            $moves[] = ['name' => optional($a->user)->name, 'old' => $a->status, 'new' => WorkTaskAssignee::BELUM];
+        }
+
+        $this->assignees()->where('status', '!=', WorkTaskAssignee::BATAL)->update([
             'status' => WorkTaskAssignee::BELUM,
             'submitted_at' => null,
             'reviewed_at' => null,
             'reviewed_by' => null,
             'review_note' => null,
         ]);
+        $this->unsetRelation('assignees');
+
+        return $moves;
     }
 
-    /** Tanggal pekerjaan dikerjakan; untuk data lama (kosong) memakai tanggal dibuat. */
+    /** Tugas dibatalkan bila ada peserta dan seluruhnya berstatus batal. */
+    public function isCancelled(): bool
+    {
+        $this->loadMissing('assignees');
+
+        return $this->assignees->isNotEmpty() && $this->assignees->every(function ($a) {
+            return $a->status === WorkTaskAssignee::BATAL;
+        });
+    }
+
+    /**
+     * Batalkan tugas untuk peserta yang diberikan (yang belum batal). Lampiran tetap tersimpan.
+     * Mengembalikan daftar perubahan status (untuk riwayat).
+     */
+    public function cancelAssignees($assignees, ?User $by = null, ?string $note = null): array
+    {
+        $moves = [];
+        foreach ($assignees as $a) {
+            if ($a->status === WorkTaskAssignee::BATAL) {
+                continue;
+            }
+            $moves[] = ['name' => optional($a->user)->name, 'old' => $a->status, 'new' => WorkTaskAssignee::BATAL];
+            $a->update([
+                'status' => WorkTaskAssignee::BATAL,
+                'reviewed_at' => $by ? now() : $a->reviewed_at,
+                'reviewed_by' => $by ? $by->id : $a->reviewed_by,
+                'review_note' => $note ?: $a->review_note,
+            ]);
+        }
+        $this->unsetRelation('assignees');
+
+        return $moves;
+    }
+
+    /** Tanggal mulai tugas; untuk data lama (kosong) memakai tanggal dikerjakan atau tanggal dibuat. */
     public function workedDate(): Carbon
     {
-        return $this->worked_on ?: $this->created_at;
+        return $this->start_date ?: ($this->worked_on ?: $this->created_at);
+    }
+
+    /** Tanggal selesai tugas (tenggat untuk tugas mentor); null bila data lama tanpa tenggat. */
+    public function endDate(): ?Carbon
+    {
+        return $this->end_date ?: ($this->deadline ?: $this->worked_on);
+    }
+
+    /** Teks rentang tanggal, mis. "02 Nov 2026 – 09 Nov 2026"; satu tanggal bila mulai = selesai. */
+    public function dateRangeText(string $format = 'd M Y'): string
+    {
+        $start = $this->workedDate()->copy()->locale('id');
+        $end = $this->endDate();
+
+        if (! $end) {
+            return $start->translatedFormat($format) . ' – Tanpa tenggat';
+        }
+
+        $end = $end->copy()->locale('id');
+
+        return $start->isSameDay($end)
+            ? $start->translatedFormat($format)
+            : $start->translatedFormat($format) . ' – ' . $end->translatedFormat($format);
     }
 
     /** Tenggat berlaku sampai akhir hari (23:59). */
@@ -105,14 +258,29 @@ class WorkTask extends Model
         return $this->deadline !== null && Carbon::today()->gt($this->deadline);
     }
 
-    /** Filter per bulan: pakai tenggat, jika kosong pakai tanggal dibuat. */
+    /** Cari lewat id tugas, judul, atau deskripsi. */
+    public function scopeSearch($query, string $term)
+    {
+        return $query->where(function ($w) use ($term) {
+            $w->where('work_tasks.code', 'like', '%' . $term . '%')
+                ->orWhere('work_tasks.title', 'like', '%' . $term . '%')
+                ->orWhere('work_tasks.description', 'like', '%' . $term . '%');
+        });
+    }
+
+    public static function typeParam($value): string
+    {
+        return $value === self::TYPE_DAILY ? self::TYPE_DAILY : self::TYPE_PROJECT;
+    }
+
+    /** Filter per bulan: pakai tanggal selesai (tenggat), jika kosong pakai tanggal mulai / dibuat. */
     public function scopeInMonth($query, string $month)
     {
         $start = Carbon::createFromFormat('!Y-m', $month)->startOfMonth()->toDateString();
         $end = Carbon::createFromFormat('!Y-m', $month)->endOfMonth()->toDateString();
 
         return $query->whereRaw(
-            'COALESCE(work_tasks.deadline, work_tasks.worked_on, DATE(work_tasks.created_at)) BETWEEN ? AND ?',
+            'COALESCE(work_tasks.end_date, work_tasks.deadline, work_tasks.worked_on, work_tasks.start_date, DATE(work_tasks.created_at)) BETWEEN ? AND ?',
             [$start, $end]
         );
     }
@@ -137,8 +305,16 @@ class WorkTask extends Model
             });
         }
 
+        // Viewer: semua tugas yang dikerjakan peserta di divisinya (hanya-baca).
+        if ($viewer->isViewer()) {
+            return $query->whereHas('assignees.user', function ($u) use ($viewer) {
+                $u->where('users.division_id', $viewer->division_id ?: 0);
+            });
+        }
+
+        // Peserta: tugas yang dibatalkan tidak muncul (hanya mentor/admin yang bisa mengaktifkannya kembali).
         return $query->whereHas('assignees', function ($a) use ($viewer) {
-            $a->where('user_id', $viewer->id);
+            $a->where('user_id', $viewer->id)->where('status', '!=', WorkTaskAssignee::BATAL);
         });
     }
 
@@ -154,12 +330,16 @@ class WorkTask extends Model
 
         $this->loadMissing('assignees.user');
 
+        if ($viewer->isViewer()) {
+            return $this->assigneesFor($viewer)->isNotEmpty();
+        }
+
         if ($viewer->isMentor()) {
             return (int) $this->created_by === (int) $viewer->id
                 || ($this->is_self && $this->assigneesFor($viewer)->isNotEmpty());
         }
 
-        return $this->assignees->contains('user_id', $viewer->id);
+        return $this->hasAssignee($viewer);
     }
 
     /** Peserta yang boleh dilihat viewer (mentor: hanya divisinya). */
@@ -167,7 +347,7 @@ class WorkTask extends Model
     {
         $this->loadMissing('assignees.user.division');
 
-        if ($viewer->isMentor()) {
+        if ($viewer->isMentor() || $viewer->isViewer()) {
             return $this->assignees->filter(function ($a) use ($viewer) {
                 return $a->user && $viewer->division_id
                     && (int) $a->user->division_id === (int) $viewer->division_id;
@@ -177,21 +357,93 @@ class WorkTask extends Model
         return $this->assignees->values();
     }
 
-    /**
-     * Tugas dibuat peserta -> hanya pembuat yang boleh edit.
-     * Tugas dibuat mentor/admin -> admin atau mentor terkait. Semua hanya sebelum tenggat.
-     */
-    public function canBeEditedBy(?User $user): bool
+    /** Peserta ini terdaftar sebagai pengerja tugas yang aktif (pembuat maupun rekan kolaborasi; yang sudah dibatalkan tidak dihitung). */
+    public function hasAssignee(?User $user): bool
     {
-        if (! $user || $this->isPastDeadline()) {
+        if (! $user) {
             return false;
         }
 
-        if ($this->is_self) {
-            return (int) $this->created_by === (int) $user->id;
+        $this->loadMissing('assignees');
+
+        return $this->assignees->contains(function ($a) use ($user) {
+            return (int) $a->user_id === (int) $user->id && $a->status !== WorkTaskAssignee::BATAL;
+        });
+    }
+
+    /**
+     * Admin / mentor terkait: boleh mengedit kapan saja (termasuk tugas yang sudah lewat tenggat dan tugas yang dicatat peserta).
+     * Peserta: hanya tugas yang dicatat sendiri (pembuat dan rekan kolaborasi yang sudah menerima ajakan), dan sebelum tenggat.
+     */
+    public function canBeEditedBy(?User $user): bool
+    {
+        if ($user && $user->isViewer()) {
+            return false;
         }
 
-        return ($user->hasRole('admin') || $user->isMentor()) && $this->isVisibleTo($user);
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->hasRole('admin') || $user->isMentor()) {
+            return $this->isVisibleTo($user);
+        }
+
+        if (! $this->is_self || $this->isPastDeadline()) {
+            return false;
+        }
+
+        return (int) $this->created_by === (int) $user->id || $this->hasAssignee($user);
+    }
+
+    /**
+     * Admin / mentor terkait: boleh membatalkan selama masih ada peserta (yang dikelolanya) yang belum batal.
+     * Peserta: hanya tugas yang dicatat sendiri (pembuat atau rekan kolaborasi), dan belum disetujui mentor.
+     */
+    public function canBeCancelledBy(?User $user): bool
+    {
+        if ($user && $user->isViewer()) {
+            return false;
+        }
+
+        if (! $user || ! $this->isVisibleTo($user)) {
+            return false;
+        }
+
+        if ($user->hasRole('admin') || $user->isMentor()) {
+            return $this->assigneesFor($user)->contains(function ($a) {
+                return $a->status !== WorkTaskAssignee::BATAL;
+            });
+        }
+
+        if (! $this->is_self || ! $this->hasAssignee($user)) {
+            return false;
+        }
+
+        $mine = $this->assignees->firstWhere('user_id', $user->id);
+
+        return $mine && $mine->status !== WorkTaskAssignee::SUDAH;
+    }
+
+    /**
+     * Boleh menambah referensi materi dari halaman detail:
+     * admin / mentor yang dapat melihat tugas ini, atau peserta yang aktif mengerjakannya.
+     */
+    public function canAddReferencesBy(?User $user): bool
+    {
+        if ($user && $user->isViewer()) {
+            return false;
+        }
+
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->hasRole('admin') || $user->isMentor()) {
+            return $this->isVisibleTo($user);
+        }
+
+        return $this->hasAssignee($user);
     }
 
     public static function initials(?string $name): string

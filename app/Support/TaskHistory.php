@@ -4,12 +4,13 @@ namespace App\Support;
 
 use App\Models\User;
 use App\Models\WorkTask;
+use App\Models\WorkTaskAssignee;
 use App\Models\WorkTaskMessage;
 use Illuminate\Support\Str;
 
 /**
- * Mencatat perubahan (pengeditan) tugas sebagai pesan kind = edit di ruang chat tugas.
- * Daftar yang sama dipakai untuk popup "Riwayat".
+ * Mencatat perubahan tugas (pengeditan dan perubahan status) sebagai pesan kind = edit.
+ * Catatan ini hanya ditampilkan di popup "Riwayat", tidak di chat diskusi.
  */
 class TaskHistory
 {
@@ -23,6 +24,37 @@ class TaskHistory
     public static function note(string $label, string $text): array
     {
         return ['label' => $label, 'note' => self::clip($text, 400)];
+    }
+
+    /**
+     * Perubahan status peserta. $moves: [['name' => 'Budi', 'old' => 'belum', 'new' => 'batal'], ...].
+     * Perubahan yang sama (lama -> baru) digabung jadi satu baris; nama peserta ditulis bila tugas punya lebih dari satu peserta.
+     */
+    public static function statusChanges(WorkTask $task, array $moves): array
+    {
+        $task->loadMissing('assignees');
+        $multi = $task->assignees->count() > 1;
+
+        $groups = [];
+        foreach ($moves as $m) {
+            if ($m['old'] === $m['new']) {
+                continue;
+            }
+            $groups[$m['old'] . '>' . $m['new']][] = $m;
+        }
+
+        $out = [];
+        foreach ($groups as $list) {
+            $names = array_values(array_filter(array_map(function ($m) { return $m['name']; }, $list)));
+            $label = $multi && $names ? 'Status (' . implode(', ', $names) . ')' : 'Status';
+            $out[] = self::change(
+                $label,
+                WorkTaskAssignee::LABELS[$list[0]['old']] ?? $list[0]['old'],
+                WorkTaskAssignee::LABELS[$list[0]['new']] ?? $list[0]['new']
+            );
+        }
+
+        return $out;
     }
 
     /** Simpan catatan pengeditan. Tidak melakukan apa-apa bila tidak ada perubahan. */

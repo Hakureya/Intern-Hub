@@ -1582,7 +1582,7 @@ button:focus {
 }
 
 .message-list .checkbox-wrapper-mail label:before {
-  content: "\F12C";
+  content: "\F012C";
   font-family: "Material Design Icons";
   top: 0;
   height: 20px;
@@ -3468,11 +3468,11 @@ table.focus-on tbody tr.focused td {
 }
 
 a.faq[data-toggle=collapse].collapsed:before {
-  content: '\F419';
+  content: '\F0419';
 }
 
 a.faq[data-toggle=collapse]:before {
-  content: '\F377';
+  content: '\F0377';
   display: block;
   font-family: 'Material Design Icons';
   font-size: 20px;

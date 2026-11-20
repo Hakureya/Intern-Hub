@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
-/** Ruang chat per tugas + riwayat pengeditan. Dipakai bersama oleh peserta dan mentor/admin. */
+/** Ruang chat per tugas + riwayat pengeditan (hanya di popup Riwayat). Dipakai bersama oleh peserta dan mentor/admin. */
 class WorkTaskChatController extends Controller
 {
     private const FILE_MIMES = 'jpg,jpeg,png,gif,webp,mp4,webm,mov,pdf,doc,docx,xls,xlsx,ppt,pptx,txt,csv,zip';
@@ -27,7 +27,8 @@ class WorkTaskChatController extends Controller
     {
         $this->authorizeTask($task);
 
-        $query = $task->messages()->with(['user', 'files']);
+        // Catatan pengeditan (kind = edit) tidak ditampilkan di diskusi; hanya muncul di popup Riwayat.
+        $query = $task->messages()->where('kind', WorkTaskMessage::TEXT)->with(['user', 'files']);
         $hasMore = false;
 
         if ($request->filled('after')) {

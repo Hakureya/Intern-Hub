@@ -62,7 +62,7 @@
                       <li class="">
                           <a href="{{ route('work-logs.index') }}"
                               class="waves-effect {{ request()->is('work-logs') || request()->is('work-logs/*') ? 'mm active' : '' }}">
-                              <i class="ti-clipboard"></i> <span> Log Pekerjaan </span>
+                              <i class="mdi mdi-briefcase-check"></i> <span> Log Pekerjaan </span>
                           </a>
                       </li>
                       <li class="">

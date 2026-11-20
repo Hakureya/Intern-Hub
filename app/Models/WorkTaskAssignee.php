@@ -9,11 +9,14 @@ class WorkTaskAssignee extends Model
     public const BELUM = 'belum';
     public const MENUNGGU = 'menunggu';
     public const SUDAH = 'sudah';
+    /** Dibatalkan (oleh mentor, atau peserta untuk tugas yang ia catat sendiri). Disembunyikan dari peserta, tetap tampil bagi mentor. */
+    public const BATAL = 'batal';
 
     public const LABELS = [
         self::BELUM => 'Belum dikerjakan',
         self::MENUNGGU => 'Menunggu persetujuan',
         self::SUDAH => 'Sudah selesai',
+        self::BATAL => 'Batal',
     ];
 
     protected $fillable = [
@@ -52,6 +55,11 @@ class WorkTaskAssignee extends Model
     public function reviewer()
     {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function isCancelled(): bool
+    {
+        return $this->status === self::BATAL;
     }
 
     public function statusLabel(): string

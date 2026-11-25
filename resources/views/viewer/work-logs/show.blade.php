@@ -1,7 +1,7 @@
 @extends('layouts.viewer')
 
 @section('css')
-    <link href="{{ URL::asset('css/work-log.css') }}?v=19" rel="stylesheet" type="text/css" />
+    <link href="{{ URL::asset('css/work-log.css') }}?v=20" rel="stylesheet" type="text/css" />
 @endsection
 
 @section('content')
@@ -55,8 +55,6 @@
                 <h4 class="wl-sub-title">{{ $task->isDaily() ? 'Deskripsi / rincian pekerjaan' : 'Instruksi' }}</h4>
                 <div class="wl-desc">{{ $task->description }}</div>
 
-                @include('includes.work-progress', ['task' => $task])
-
                 @if ($task->references->isNotEmpty())
                     <h4 class="wl-sub-title">Referensi Tugas</h4>
                     @foreach ($task->references as $ref)
@@ -80,6 +78,9 @@
                 @foreach ($notes as $a)
                     <div class="wl-note wl-note--blue" style="margin-top: 8px;"><b>Catatan {{ optional($a->user)->name }}:</b> {{ $a->proof_note }}</div>
                 @endforeach
+
+                {{-- Turunan tugas / catatan progres: di bawah lampiran bukti. --}}
+                @include('includes.work-progress', ['task' => $task])
             </div>
 
             <div>

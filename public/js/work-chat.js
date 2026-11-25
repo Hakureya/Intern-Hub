@@ -159,7 +159,7 @@
             return '<li><b>' + esc(c.label) + ':</b> <s>' + esc(c.old) + '</s><span class="arrow">&rarr;</span><span class="new">' + esc(c.new) + '</span></li>';
         }).join('');
         return '<div class="wc-sys"><div class="wc-sys-head"><i class="mdi mdi-pencil-outline"></i>' +
-            '<span><b>' + esc(m.user.name) + '</b> ' + roleBadge(m.user) + ' mengubah tugas</span>' +
+            '<span><b>' + esc(m.user.name) + '</b> ' + roleBadge(m.user) + ' </span>' +
             '<time>' + esc(withDate ? fullTime(m.created_at) : timeText(m.created_at)) + '</time></div><ul>' + items + '</ul></div>';
     }
 

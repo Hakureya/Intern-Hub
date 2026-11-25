@@ -1,4 +1,4 @@
-{{-- Satu lampiran (file/tautan). Param: $att, $task (jika $manage), $manage (bool: tampilkan menu ⋯ ubah/hapus) --}}
+{{-- Satu lampiran (file/tautan). Param: $att, $task (jika $manage), $manage (bool: tampilkan menu ⋯ ubah/hapus), $destroyRoute (opsional; default rute peserta) --}}
 @php($isLink = $att->isLink())
 <div class="wl-work-item">
     <i class="mdi {{ $att->icon() }} wl-work-ic"></i>
@@ -22,7 +22,7 @@
                     <a href="{{ route('work-logs.file.attachment', ['attachment' => $att, 'download' => 1]) }}"><i class="mdi mdi-download-outline"></i> Unduh</a>
                 @endif
                 <hr>
-                <form method="POST" action="{{ route('user.work-logs.attachments.destroy', ['task' => $task, 'attachment' => $att]) }}"
+                <form method="POST" action="{{ route($destroyRoute ?? 'user.work-logs.attachments.destroy', ['task' => $task, 'attachment' => $att]) }}"
                     data-confirm="Hapus lampiran ini?" data-confirm-ok="Ya, hapus">
                     @csrf
                     @method('DELETE')

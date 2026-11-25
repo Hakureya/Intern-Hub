@@ -131,6 +131,7 @@
         <div class="wl-tabs">
             <button type="button" class="wl-tab is-active" data-wl-tab="#wl-pane-in">Diterima ({{ $received->count() }})</button>
             <button type="button" class="wl-tab" data-wl-tab="#wl-pane-out">Dikirim ({{ $sent->count() }})</button>
+            <button type="button" class="wl-tab" data-wl-tab="#wl-pane-history">Riwayat ({{ $history->count() }})</button>
         </div>
         <div class="wl-modal-body">
             <div class="wl-tabpane is-active" id="wl-pane-in">
@@ -141,15 +142,11 @@
                             <div class="wl-req-sub">Dari {{ optional($r->from)->name }} &middot; {{ optional(optional($r->from)->division)->name ?: '-' }}
                                 &middot; mengerjakan bersama?</div>
                         </div>
-                        @if ($r->status === 'pending')
-                            <form method="POST" action="{{ route('user.work-logs.requests.respond', $r) }}" class="wl-req-actions">
-                                @csrf
-                                <button name="action" value="accept" class="wl-btn wl-btn--ok wl-btn--sm">Terima</button>
-                                <button name="action" value="decline" class="wl-btn wl-btn--danger wl-btn--sm">Tolak</button>
-                            </form>
-                        @else
-                            <span class="wl-badge {{ $r->status === 'accepted' ? 'wl-badge--sudah' : 'wl-badge--belum' }}">{{ \App\Models\WorkTaskPartnerRequest::LABELS[$r->status] }}</span>
-                        @endif
+                        <form method="POST" action="{{ route('user.work-logs.requests.respond', $r) }}" class="wl-req-actions">
+                            @csrf
+                            <button name="action" value="accept" class="wl-btn wl-btn--ok wl-btn--sm">Terima</button>
+                            <button name="action" value="decline" class="wl-btn wl-btn--danger wl-btn--sm">Tolak</button>
+                        </form>
                     </div>
                 @empty
                     <div class="wl-empty">Belum ada permintaan masuk.</div>
@@ -162,12 +159,32 @@
                             <div class="wl-req-title">{{ optional($r->task)->title }}</div>
                             <div class="wl-req-sub">Ke {{ optional($r->to)->name }} &middot; {{ optional(optional($r->to)->division)->name ?: '-' }}</div>
                         </div>
-                        <span class="wl-badge {{ $r->status === 'accepted' ? 'wl-badge--sudah' : ($r->status === 'declined' ? 'wl-badge--belum' : 'wl-badge--menunggu') }}">
-                            {{ \App\Models\WorkTaskPartnerRequest::LABELS[$r->status] }}
-                        </span>
+                        <span class="wl-badge wl-badge--menunggu">{{ \App\Models\WorkTaskPartnerRequest::LABELS[$r->status] }}</span>
                     </div>
                 @empty
                     <div class="wl-empty">Belum ada permintaan terkirim.</div>
+                @endforelse
+            </div>
+            {{-- Riwayat: permintaan masuk maupun keluar yang sudah diterima, ditolak, atau dibatalkan. --}}
+            <div class="wl-tabpane" id="wl-pane-history">
+                @forelse ($history as $r)
+                    @php($incoming = (int) $r->to_user_id === (int) auth()->id())
+                    @php($other = $incoming ? $r->from : $r->to)
+                    <div class="wl-req">
+                        <div>
+                            <div class="wl-req-title">{{ optional($r->task)->title }}</div>
+                            <div class="wl-req-sub">
+                                {{ $incoming ? 'Dari' : 'Ke' }} {{ optional($other)->name ?: '-' }} &middot; {{ optional(optional($other)->division)->name ?: '-' }}
+                                &middot; {{ $incoming ? 'diterima' : 'dikirim' }}
+                                &middot; {{ ($r->responded_at ?: $r->updated_at)->locale('id')->translatedFormat('d M Y, H:i') }}
+                            </div>
+                        </div>
+                        <span class="wl-badge {{ $r->status === 'accepted' ? 'wl-badge--sudah' : ($r->status === 'declined' ? 'wl-badge--belum' : 'wl-badge--batal') }}">
+                            {{ \App\Models\WorkTaskPartnerRequest::LABELS[$r->status] ?? ucfirst($r->status) }}
+                        </span>
+                    </div>
+                @empty
+                    <div class="wl-empty">Belum ada riwayat permintaan.</div>
                 @endforelse
             </div>
         </div>

@@ -83,10 +83,19 @@ class UserWorkTaskController extends Controller
             return $r['task']->workedDate()->toDateString();
         });
 
+        // Diterima / Dikirim hanya memuat permintaan yang masih menunggu; yang sudah diproses pindah ke Riwayat.
         $received = WorkTaskPartnerRequest::with(['task', 'from.division'])
-            ->where('to_user_id', $me->id)->latest()->get();
+            ->where('to_user_id', $me->id)
+            ->where('status', WorkTaskPartnerRequest::PENDING)->latest()->get();
         $sent = WorkTaskPartnerRequest::with(['task', 'to.division'])
-            ->where('from_user_id', $me->id)->latest()->get();
+            ->where('from_user_id', $me->id)
+            ->where('status', WorkTaskPartnerRequest::PENDING)->latest()->get();
+        $history = WorkTaskPartnerRequest::with(['task', 'from.division', 'to.division'])
+            ->where(function ($q) use ($me) {
+                $q->where('to_user_id', $me->id)->orWhere('from_user_id', $me->id);
+            })
+            ->where('status', '!=', WorkTaskPartnerRequest::PENDING)
+            ->orderByDesc('updated_at')->orderByDesc('id')->get();
 
         return view('user.work-logs.index', [
             'rows' => $rows,
@@ -99,7 +108,8 @@ class UserWorkTaskController extends Controller
             'stats' => $stats,
             'received' => $received,
             'sent' => $sent,
-            'pendingCount' => $received->where('status', WorkTaskPartnerRequest::PENDING)->count(),
+            'history' => $history,
+            'pendingCount' => $received->count(),
         ]);
     }
 
@@ -434,7 +444,7 @@ class UserWorkTaskController extends Controller
         }
 
         $name = optional($partnerRequest->to)->name ?: '-';
-        $partnerRequest->delete();
+        $partnerRequest->update(['status' => WorkTaskPartnerRequest::CANCELLED, 'responded_at' => now()]);
 
         TaskHistory::record($task, $me, [TaskHistory::note('Kolaborasi', 'Membatalkan undangan: ' . $name)]);
 

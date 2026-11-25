@@ -2,7 +2,7 @@
 
 @section('css')
     <link href="{{ URL::asset('css/cerah-portal.css') }}?v=2" rel="stylesheet" type="text/css" />
-    <link href="{{ URL::asset('css/work-log.css') }}?v=19" rel="stylesheet" type="text/css" />
+    <link href="{{ URL::asset('css/work-log.css') }}?v=20" rel="stylesheet" type="text/css" />
     <link href="{{ URL::asset('css/work-chat.css') }}?v=3" rel="stylesheet" type="text/css" />
 @endsection
 
@@ -96,8 +96,6 @@
 
             <h4 class="wl-sub-title">Instruksi</h4>
             <div class="wl-desc">{{ $task->description }}</div>
-
-                @include('includes.work-progress', ['task' => $task])
 
             {{-- Referensi materi: mentor dan peserta (yang mengerjakan tugas ini) boleh menambahkan. --}}
             @if ($canAddRef || $task->references->isNotEmpty())
@@ -222,6 +220,9 @@
                     </div>
                 @endif
             @endif
+
+            {{-- Turunan tugas / catatan progres: di bawah Hasil pekerjaan. --}}
+            @include('includes.work-progress', ['task' => $task])
 
             @include('includes.work-people', ['people' => $people])
 

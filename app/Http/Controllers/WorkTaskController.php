@@ -731,6 +731,101 @@ class WorkTaskController extends Controller
         return redirect()->route('work-logs.show', $task);
     }
 
+    /**
+     * Mentor/admin menambahkan hasil pekerjaan (file / tautan) pada tugas proyek maupun harian.
+     * Lampiran disalin ke setiap peserta aktif yang dikelola pengirim (mentor: satu divisi), file fisik disimpan sekali.
+     */
+    public function storeAttachments(Request $request, WorkTask $task)
+    {
+        $viewer = auth()->user();
+        abort_unless($task->canAddReferencesBy($viewer), 403);
+
+        $request->validate([
+            'files' => 'nullable|array|max:10',
+            'files.*' => 'file|max:10240|mimes:jpg,jpeg,png,webp,gif,pdf,doc,docx,xls,xlsx,ppt,pptx,zip',
+            'link_url' => 'nullable|url|max:500',
+            'link_label' => 'nullable|string|max:120',
+        ], [
+            'files.max' => 'Maksimal 10 file sekali unggah.',
+            'files.*.max' => 'Ukuran tiap file maksimal 10 MB.',
+            'files.*.mimes' => 'Format file harus jpg, png, webp, gif, pdf, doc, xls, ppt, atau zip.',
+            'files.*.uploaded' => 'File gagal diunggah. Pastikan ukuran tidak melebihi batas server.',
+            'link_url.url' => 'Tautan harus diawali http:// atau https://.',
+        ]);
+
+        if (! $request->hasFile('files') && ! $request->filled('link_url')) {
+            return back()->withErrors(['files' => 'Pilih file atau isi tautan terlebih dahulu.']);
+        }
+
+        $targets = $task->assigneesFor($viewer)->filter(function ($a) {
+            return $a->status !== WorkTaskAssignee::BATAL;
+        });
+
+        if ($targets->isEmpty()) {
+            return back()->withErrors(['files' => 'Tidak ada peserta aktif pada tugas ini.']);
+        }
+
+        $items = [];
+        foreach ((array) $request->file('files', []) as $file) {
+            $stored = $this->storeWorkFile($file, 'proof', 'proof-mentor-' . $viewer->id);
+            $items[] = ['type' => 'file', 'name' => $stored['name'], 'path' => $stored['path'], 'url' => null];
+        }
+        if ($request->filled('link_url')) {
+            $url = $request->input('link_url');
+            $items[] = [
+                'type' => 'link',
+                'name' => $request->input('link_label') ?: (parse_url($url, PHP_URL_HOST) ?: $url),
+                'path' => null,
+                'url' => $url,
+            ];
+        }
+
+        DB::transaction(function () use ($targets, $items, $viewer) {
+            foreach ($targets as $target) {
+                foreach ($items as $item) {
+                    WorkTaskAttachment::create($item + ['work_task_assignee_id' => $target->id, 'uploaded_by' => $viewer->id]);
+                }
+            }
+        });
+
+        TaskHistory::record($task, $viewer, [TaskHistory::note('Hasil pekerjaan', 'Menambah: ' . implode(', ', array_column($items, 'name')) . '.')]);
+
+        flash()->success('Berhasil', count($items) . ' hasil pekerjaan ditambahkan.');
+
+        return redirect()->route('work-logs.show', $task);
+    }
+
+    /** Menghapus hasil pekerjaan yang diunggah mentor/admin (seluruh salinannya). Admin boleh menghapus milik siapa pun. */
+    public function destroyAttachment(WorkTask $task, WorkTaskAttachment $attachment)
+    {
+        $viewer = auth()->user();
+        abort_unless($task->canAddReferencesBy($viewer), 403);
+
+        $attachment->load('assignee');
+        abort_unless($attachment->assignee && (int) $attachment->assignee->work_task_id === (int) $task->id, 404);
+        abort_unless($viewer->hasRole('admin') || (int) $attachment->uploaded_by === (int) $viewer->id, 403);
+
+        $ids = $task->assigneesFor($viewer)->pluck('id');
+        $siblings = WorkTaskAttachment::whereIn('work_task_assignee_id', $ids)
+            ->where('type', $attachment->type)
+            ->where('uploaded_by', $attachment->uploaded_by)
+            ->where($attachment->isLink() ? 'url' : 'path', $attachment->isLink() ? $attachment->url : $attachment->path)
+            ->get();
+
+        $name = $attachment->name;
+        $paths = $siblings->pluck('path')->filter()->unique();
+        WorkTaskAttachment::whereIn('id', $siblings->pluck('id'))->delete();
+        foreach ($paths as $path) {
+            $this->deleteFileIfUnused($path);
+        }
+
+        TaskHistory::record($task, $viewer, [TaskHistory::note('Hasil pekerjaan', 'Menghapus: ' . $name . '.')]);
+
+        flash()->success('Berhasil', 'Hasil pekerjaan dihapus.');
+
+        return redirect()->route('work-logs.show', $task);
+    }
+
     /** Mentor/admin membatalkan tugas untuk seluruh peserta yang dikelolanya. Tugas tetap tampil di halaman mentor. */
     public function cancel(Request $request, WorkTask $task)
     {

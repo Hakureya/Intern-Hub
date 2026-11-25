@@ -1,7 +1,7 @@
 @extends('layouts.master')
 
 @section('css')
-    <link href="{{ URL::asset('css/work-log.css') }}?v=19" rel="stylesheet" type="text/css" />
+    <link href="{{ URL::asset('css/work-log.css') }}?v=20" rel="stylesheet" type="text/css" />
     <link href="{{ URL::asset('css/work-chat.css') }}?v=3" rel="stylesheet" type="text/css" />
 @endsection
 
@@ -119,8 +119,6 @@
                 <h4 class="wl-sub-title">Instruksi</h4>
                 <div class="wl-desc">{{ $task->description }}</div>
 
-                @include('includes.work-progress', ['task' => $task])
-
                 {{-- Sama dengan tampilan peserta: referensi dari mentor maupun peserta; mentor juga bisa menambah langsung di sini. --}}
                 <h4 class="wl-sub-title">Referensi Tugas</h4>
 
@@ -179,13 +177,46 @@
                     @if ($task->require_attachment) <small class="req">wajib ada lampiran</small> @endif
                 </h4>
                 @forelse ($results as $att)
-                    @include('includes.work-attachment-item', ['att' => $att, 'manage' => false])
+                    {{-- Mentor boleh menghapus hasil yang ia unggah sendiri (admin: semua). --}}
+                    @include('includes.work-attachment-item', [
+                        'att' => $att,
+                        'task' => $task,
+                        'manage' => $canAddRef && (auth()->user()->hasRole('admin') || (int) $att->uploaded_by === (int) auth()->id()),
+                        'destroyRoute' => 'work-logs.attachments.destroy',
+                    ])
                 @empty
                     <div class="wl-hint" style="margin-bottom: 10px;">Belum ada lampiran.</div>
                 @endforelse
                 @foreach ($notes as $a)
                     <div class="wl-note wl-note--blue" style="margin-top: 8px;"><b>Catatan {{ optional($a->user)->name }}:</b> {{ $a->proof_note }}</div>
                 @endforeach
+
+                @foreach (['files', 'files.0'] as $k)
+                    @error($k) <div class="wl-error">{{ $message }}</div> @enderror
+                @endforeach
+
+                @if ($canAddRef)
+                    <div class="wl-attach">
+                        <div class="wl-menu-wrap">
+                            <button type="button" class="wl-attach-btn" data-wl-menu>
+                                <i class="mdi mdi-paperclip"></i> Lampirkan <i class="mdi mdi-chevron-down"></i>
+                            </button>
+                            <div class="wl-menu wl-menu--left">
+                                <button type="button" data-wl-open="#wl-result-modal"><i class="mdi mdi-link-variant"></i> Tautan</button>
+                                <hr>
+                                <button type="button" data-wl-upload="#wl-result-upload-input"><i class="mdi mdi-paperclip"></i> Unggah dari perangkat</button>
+                            </div>
+                        </div>
+                    </div>
+                    <form id="wl-result-upload-form" method="POST" enctype="multipart/form-data" hidden
+                        action="{{ route('work-logs.attachments.store', $task) }}">
+                        @csrf
+                        <input type="file" id="wl-result-upload-input" name="files[]" multiple data-wl-autosubmit>
+                    </form>
+                @endif
+
+                {{-- Turunan tugas / catatan progres: di bawah Hasil pekerjaan. --}}
+                @include('includes.work-progress', ['task' => $task])
 
                 @include('includes.work-people', ['people' => $people])
             </div>
@@ -254,6 +285,30 @@
         </div>{{-- .wc-layout --}}
     </div>
 @if ($canAddRef)
+    <div class="wl-modal wl {{ $errors->has('link_url') ? 'is-open' : '' }}" id="wl-result-modal">
+        <div class="wl-modal-box" style="width: min(480px, 100%);">
+            <div class="wl-modal-head">
+                <h5>Tambah tautan hasil pekerjaan</h5>
+                <button type="button" class="wl-modal-x" data-wl-close aria-label="Tutup">&times;</button>
+            </div>
+            <form method="POST" action="{{ route('work-logs.attachments.store', $task) }}" class="wl-modal-body">
+                @csrf
+                <div class="wl-field">
+                    <label class="wl-label" for="result_link_url">Alamat tautan <span class="req">*</span></label>
+                    <input type="url" id="result_link_url" name="link_url" class="wl-input" maxlength="500" required placeholder="https://..." value="{{ old('link_url') }}">
+                    @error('link_url') <div class="wl-error">{{ $message }}</div> @enderror
+                </div>
+                <div class="wl-field">
+                    <label class="wl-label" for="result_link_label">Nama tampilan <small>(opsional)</small></label>
+                    <input type="text" id="result_link_label" name="link_label" class="wl-input" maxlength="120" value="{{ old('link_label') }}">
+                </div>
+                <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                    <button type="button" class="wl-btn" data-wl-close>Batal</button>
+                    <button type="submit" class="wl-btn wl-btn--primary">Tambahkan</button>
+                </div>
+            </form>
+        </div>
+    </div>
     <div class="wl-modal wl {{ $errors->has('reference_link') ? 'is-open' : '' }}" id="wl-ref-modal">
         <div class="wl-modal-box" style="width: min(480px, 100%);">
             <div class="wl-modal-head">

@@ -306,7 +306,10 @@
 .wl-tl-dot { position: absolute; left: -25px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: var(--cs-primary, #1b6aa8); border: 2px solid #fff; box-shadow: 0 0 0 1px var(--cs-primary, #1b6aa8); }
 .wl-tl-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; }
 .wl-tl-by { color: var(--cs-muted, #6d808e); }
-.wl-tl-note { margin-top: 4px; font-size: 13.5px; line-height: 1.5; white-space: pre-line; }
+/* Catatan turunan/progres: satu baris dengan tinggi tetap (ada/tidaknya catatan, ukuran item sama). Klik untuk membuka penuh. */
+.wl-tl-note { margin-top: 2px; font-size: 12px; line-height: 18px; height: 18px; color: var(--cs-muted, #6d808e); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wl-tl-note[onclick] { cursor: pointer; }
+.wl-tl-note.is-open { height: auto; white-space: pre-line; overflow: visible; text-overflow: clip; }
 .wl-tl-del { margin-left: auto; }
 .wl-tl-del-btn { border: 0; background: transparent; color: #b42318; cursor: pointer; font-size: 16px; line-height: 1; padding: 2px 4px; }
 .wl-tl-form { border-top: 1px dashed var(--cs-line, #d9e7ef); padding-top: 12px; margin-bottom: 6px; }

@@ -70,8 +70,11 @@
                             </form>
                         @endif
                     </div>
+                    {{-- Selalu dirender (kosong bila tanpa catatan) agar tinggi tiap item sama; teks dikecilkan. --}}
                     @if ($e->note)
-                        <div class="wl-tl-note">{{ $e->note }}</div>
+                        <div class="wl-tl-note" title="Klik untuk melihat selengkapnya" onclick="this.classList.toggle('is-open')">{{ $e->note }}</div>
+                    @else
+                        <div class="wl-tl-note" aria-hidden="true"></div>
                     @endif
                 </div>
             </div>

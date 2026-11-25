@@ -32,7 +32,7 @@
                     <a href="{{ route('work-logs.create', ['type' => 'daily']) }}" class="wl-btn wl-btn--primary"><i class="mdi mdi-plus"></i> Tambah tugas harian</a>
                 @else
                     <a href="{{ route('work-logs.create') }}" class="wl-btn wl-btn--primary">
-                        <i class="mdi mdi-plus"></i> Tambah tugas
+                        <i class="mdi mdi-plus"></i> Tambah tugas proyek
                     </a>
                 @endif
             </div>

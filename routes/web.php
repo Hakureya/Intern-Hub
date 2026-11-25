@@ -90,6 +90,8 @@ Route::group(['middleware' => ['auth', 'Role'], 'roles' => ['admin', 'mentor']],
     Route::put('/work-logs/{task}', [\App\Http\Controllers\WorkTaskController::class, 'update'])->where('task', '[0-9]+')->name('work-logs.update');
     Route::post('/work-logs/{task}/references', [\App\Http\Controllers\WorkTaskController::class, 'storeReferences'])->where('task', '[0-9]+')->name('work-logs.references.store');
     Route::delete('/work-logs/{task}/references/{reference}', [\App\Http\Controllers\WorkTaskController::class, 'destroyReference'])->where(['task' => '[0-9]+', 'reference' => '[0-9]+'])->name('work-logs.references.destroy');
+    Route::post('/work-logs/{task}/attachments', [\App\Http\Controllers\WorkTaskController::class, 'storeAttachments'])->where('task', '[0-9]+')->name('work-logs.attachments.store');
+    Route::delete('/work-logs/{task}/attachments/{attachment}', [\App\Http\Controllers\WorkTaskController::class, 'destroyAttachment'])->where(['task' => '[0-9]+', 'attachment' => '[0-9]+'])->name('work-logs.attachments.destroy');
     Route::post('/work-logs/{task}/cancel', [\App\Http\Controllers\WorkTaskController::class, 'cancel'])->where('task', '[0-9]+')->name('work-logs.cancel');
     Route::post('/work-logs/{task}/assignees/{assignee}/status', [\App\Http\Controllers\WorkTaskController::class, 'updateStatus'])->where(['task' => '[0-9]+', 'assignee' => '[0-9]+'])->name('work-logs.status');
 });

@@ -3,6 +3,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 @yield('css')
 
+<!-- App favicon -->
+<link rel="icon" type="image/x-icon" href="{{ asset('assets/images/PLNSC.ico') }}?v=1">
+<link rel="icon" type="image/png" sizes="32x32" href="{{ asset('assets/images/logo-pln1.png') }}?v=1">
+
 <!-- App css -->
 <link href="{{ URL::asset('assets/css/bootstrap.min.css') }}" rel="stylesheet" type="text/css" />
 <link href="{{ URL::asset('assets/css/metismenu.min.css') }}" rel="stylesheet" type="text/css">

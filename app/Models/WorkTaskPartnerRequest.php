@@ -9,11 +9,13 @@ class WorkTaskPartnerRequest extends Model
     public const PENDING = 'pending';
     public const ACCEPTED = 'accepted';
     public const DECLINED = 'declined';
+    public const CANCELLED = 'cancelled';
 
     public const LABELS = [
         self::PENDING => 'Menunggu',
         self::ACCEPTED => 'Diterima',
         self::DECLINED => 'Ditolak',
+        self::CANCELLED => 'Dibatalkan',
     ];
 
     protected $fillable = ['work_task_id', 'from_user_id', 'to_user_id', 'status', 'responded_at'];

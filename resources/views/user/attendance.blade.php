@@ -3,6 +3,7 @@
 @section('content')
 @section('css')
     <link href="{{ URL::asset('css/cerah-portal.css') }}?v=1" rel="stylesheet" type="text/css" />
+    <link href="{{ URL::asset('css/clockout-celebration.css') }}?v=1" rel="stylesheet" type="text/css" />
 @endsection
 @php
     $displayUser = auth()->user();
@@ -288,4 +289,10 @@
         }
     })();
 </script>
+<script src="{{ URL::asset('js/clockout-celebration.js') }}?v=1"></script>
+@if (session('clockout_celebration'))
+    <script>
+        ClockoutCelebration.play(Object.assign(@json(session('clockout_celebration')), { userId: {{ (int) auth()->id() }} }));
+    </script>
+@endif
 @endsection

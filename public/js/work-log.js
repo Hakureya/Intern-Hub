@@ -88,6 +88,16 @@
         }
         if (input.matches && input.matches('.wl-pcard input, .pc-pick input')) {
             input.closest('.wl-pcard, .pc-pick').classList.toggle('is-selected', input.checked);
+            // mode pilih satu: kartu lain dilepas
+            var grid = input.closest('[data-pc-pick]');
+            if (input.checked && grid && grid.getAttribute('data-single') === '1') {
+                [].forEach.call(grid.querySelectorAll('input:checked'), function (other) {
+                    if (other !== input) {
+                        other.checked = false;
+                        other.closest('.pc-pick').classList.remove('is-selected');
+                    }
+                });
+            }
             refreshCount(input.closest('[data-wl-picker]') || document);
         }
     });
@@ -283,11 +293,6 @@
 
     document.addEventListener('DOMContentLoaded', function () {
         tickCountdown();
-        // HP: kartu filter berupa strip yang bisa digeser; pastikan yang aktif terlihat
-        [].forEach.call(document.querySelectorAll('.wl-stats'), function (strip) {
-            var on = strip.querySelector('.is-active');
-            if (on && strip.scrollWidth > strip.clientWidth) { strip.scrollLeft = Math.max(0, on.offsetLeft - 12); }
-        });
         [].forEach.call(document.querySelectorAll('form[data-wl-cancel-confirm]'), syncCancelConfirm);
         [].forEach.call(document.querySelectorAll('form'), function (f) { if (f.querySelector('[data-wl-date-start]')) { syncDateRange(f); } });
         [].forEach.call(document.querySelectorAll('[data-wl-attach]'), initAttach);

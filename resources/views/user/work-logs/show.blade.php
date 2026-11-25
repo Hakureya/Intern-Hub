@@ -2,7 +2,7 @@
 
 @section('css')
     <link href="{{ URL::asset('css/cerah-portal.css') }}?v=2" rel="stylesheet" type="text/css" />
-    <link href="{{ URL::asset('css/work-log.css') }}?v=16" rel="stylesheet" type="text/css" />
+    <link href="{{ URL::asset('css/work-log.css') }}?v=19" rel="stylesheet" type="text/css" />
     <link href="{{ URL::asset('css/work-chat.css') }}?v=3" rel="stylesheet" type="text/css" />
 @endsection
 
@@ -55,13 +55,24 @@
                 <dt>ID tugas</dt>
                 <dd>{{ $task->code }}</dd>
                 @if ($task->isDaily())
-                    <dt>Tanggal pengerjaan</dt>
-                    <dd>{{ $task->workedDate()->locale('id')->translatedFormat('l, d F Y') }}</dd>
+                    <dt>Jenis tugas</dt>
+                    <dd>{{ $task->has_children ? 'Tugas dengan turunan' : 'Pencatatan' }}</dd>
+                    @if ($task->has_children)
+                        <dt>Mulai</dt>
+                        <dd>{{ $task->workedDate()->locale('id')->translatedFormat('l, d F Y') }}</dd>
+                    @else
+                        <dt>Tanggal pengerjaan</dt>
+                        <dd>{{ $task->dateRangeText() }}</dd>
+                    @endif
+                    @if ($task->deadline)<dt>Tenggat</dt><dd>{{ $task->deadline->locale('id')->translatedFormat('l, d F Y') }}</dd>@endif
                     @if ($task->categoryLabel())<dt>Kategori</dt><dd>{{ $task->categoryLabel() }}</dd>@endif
-                    @if ($task->quantity !== null)<dt>Jumlah output</dt><dd>{{ number_format($task->quantity, 0, ',', '.') }} {{ $task->quantity_unit }}</dd>@endif
-                    <dt>Status pengerjaan</dt>
-                    <dd><span class="wl-badge wl-badge--{{ $task->work_status }}">{{ $task->workStatusLabel() }}</span></dd>
-                @else
+                    @if ($task->quantity_unit)<dt>Satuan output</dt><dd>{{ $task->quantity_unit }}</dd>@endif
+                    @if (! $task->has_children && $task->quantity !== null)<dt>Jumlah output</dt><dd>{{ number_format($task->quantity, 0, ',', '.') }} {{ $task->quantity_unit }}</dd>@endif
+                    @if (! $task->has_children && $task->workStatusLabel())
+                        <dt>Status pengerjaan</dt>
+                        <dd><span class="wl-badge wl-badge--{{ $task->work_status }}">{{ $task->workStatusLabel() }}</span></dd>
+                    @endif
+                    @else
                 <dt>Tanggal mulai</dt>
                 <dd>{{ $task->workedDate()->locale('id')->translatedFormat('l, d F Y') }}</dd>
                 <dt>Tanggal selesai</dt>
@@ -85,6 +96,8 @@
 
             <h4 class="wl-sub-title">Instruksi</h4>
             <div class="wl-desc">{{ $task->description }}</div>
+
+                @include('includes.work-progress', ['task' => $task])
 
             {{-- Referensi materi: mentor dan peserta (yang mengerjakan tugas ini) boleh menambahkan. --}}
             @if ($canAddRef || $task->references->isNotEmpty())
@@ -211,6 +224,36 @@
             @endif
 
             @include('includes.work-people', ['people' => $people])
+
+            {{-- Undangan kolaborasi: undang teman ke tugas yang sedang berjalan --}}
+            @if ($canInvite || $invites->isNotEmpty())
+                <div class="wl-invite-box">
+                    <div class="wl-invite-head">
+                        <h4 class="wl-sub-title" style="margin: 0;">Undangan kolaborasi</h4>
+                        @if ($canInvite)
+                            <button type="button" class="wl-btn wl-btn--sm" data-wl-open="#wl-invite-modal"><i class="mdi mdi-account-plus-outline"></i> Undang teman</button>
+                        @endif
+                    </div>
+                    @forelse ($invites as $inv)
+                        <div class="wl-invite-row">
+                            <span>{{ optional($inv->to)->name ?: '-' }}</span>
+                            <span style="display: inline-flex; align-items: center; gap: 8px;">
+                                <span class="wl-badge {{ $inv->status === 'pending' ? 'wl-badge--menunggu' : 'wl-badge--belum' }}">{{ \App\Models\WorkTaskPartnerRequest::LABELS[$inv->status] }}</span>
+                                @if ($inv->status === 'pending' && (int) $inv->from_user_id === (int) auth()->id())
+                                    <form method="POST" action="{{ route('user.work-logs.partners.destroy', [$task, $inv]) }}"
+                                        data-confirm="Undangan ke {{ optional($inv->to)->name }} akan dibatalkan. Kamu bisa mengundangnya lagi nanti."
+                                        data-confirm-title="Batalkan undangan?" data-confirm-ok="Ya, batalkan" data-confirm-tone="danger">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="wl-btn wl-btn--danger wl-btn--sm">Batalkan</button>
+                                    </form>
+                                @endif
+                            </span>
+                        </div>
+                    @empty
+                        <div class="wl-hint">Belum ada undangan menunggu. Teman yang menerima langsung ikut mengerjakan tugas ini.</div>
+                    @endforelse
+                </div>
+            @endif
         </div>
         </div>{{-- .wc-main --}}
         @include('includes.work-chat', ['task' => $task])
@@ -239,6 +282,40 @@
                 <div style="display: flex; gap: 8px; justify-content: flex-end;">
                     <button type="button" class="wl-btn" data-wl-close>Batal</button>
                     <button type="submit" class="wl-btn wl-btn--primary">Tambahkan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+@endif
+@if ($canInvite)
+    <div class="wl-modal wl {{ $errors->has('partners') ? 'is-open' : '' }}" id="wl-invite-modal">
+        <div class="wl-modal-box" style="width: min(820px, 100%);">
+            <div class="wl-modal-head">
+                <h5>Undang teman</h5>
+                <button type="button" class="wl-modal-x" data-wl-close aria-label="Tutup">&times;</button>
+            </div>
+            <form method="POST" action="{{ route('user.work-logs.partners.store', $task) }}" class="wl-modal-body" data-wl-picker>
+                @csrf
+                <div class="wl-sub" style="margin-bottom: 12px;">
+                    Pilih teman satu divisi. Setelah menerima, mereka ikut mengerjakan{{ $task->has_children ? ' dan menambahkan turunannya sendiri (boleh untuk tanggal sebelum bergabung)' : '' }}.
+                    <span class="wl-pill-count" data-wl-count style="margin-left: 8px;">0 dipilih</span>
+                </div>
+                @if ($inviteCandidates->isEmpty())
+                    <div class="wl-empty">Tidak ada teman satu divisi yang bisa diundang.</div>
+                @else
+                    <div class="pc-pick-grid" data-pc-pick data-logo="{{ asset('assets/images/logo-plnsc.png') }}">
+                        @foreach ($inviteCandidates as $p)
+                            <label class="pc-pick" data-person="{{ json_encode($p->directoryCard(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}">
+                                <input type="checkbox" name="partners[]" value="{{ $p->id }}">
+                                <span class="pc-pick-card"><span class="pc-pick-fallback">{{ $p->name }}</span></span>
+                            </label>
+                        @endforeach
+                    </div>
+                @endif
+                @error('partners') <div class="wl-error">{{ $message }}</div> @enderror
+                <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px;">
+                    <button type="button" class="wl-btn" data-wl-close>Batal</button>
+                    @if ($inviteCandidates->isNotEmpty())<button type="submit" class="wl-btn wl-btn--primary">Kirim undangan</button>@endif
                 </div>
             </form>
         </div>

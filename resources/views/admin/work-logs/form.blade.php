@@ -170,7 +170,6 @@
                                     data-person="{{ json_encode($p->directoryCard(true), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}">
                                     <input type="checkbox" name="participants[]" value="{{ $p->id }}" {{ $on ? 'checked' : '' }}>
                                     <span class="pc-pick-card"><span class="pc-pick-fallback">{{ $p->name }}</span></span>
-                                    <span class="pc-pick-name">{{ $p->name }}</span>
                                 </label>
                             @endforeach
                         </div>
@@ -214,5 +213,5 @@
 @endsection
 
 @section('script')
-    <script src="{{ URL::asset('js/work-log.js') }}?v=13"></script>
+    <script src="{{ URL::asset('js/work-log.js') }}?v=11"></script>
 @endsection

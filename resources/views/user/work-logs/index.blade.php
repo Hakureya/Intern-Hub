@@ -2,7 +2,7 @@
 
 @section('css')
     <link href="{{ URL::asset('css/cerah-portal.css') }}?v=2" rel="stylesheet" type="text/css" />
-    <link href="{{ URL::asset('css/work-log.css') }}?v=16" rel="stylesheet" type="text/css" />
+    <link href="{{ URL::asset('css/work-log.css') }}?v=19" rel="stylesheet" type="text/css" />
 @endsection
 
 @section('content')
@@ -101,6 +101,7 @@
                                 <span><i class="mdi mdi-paperclip"></i> Wajib lampiran</span>
                             @endif
                         </div>
+                        @include('includes.work-target-bar', ['task' => $task])
                     </div>
                     <div class="wl-row-status">
                         @if ($mine)

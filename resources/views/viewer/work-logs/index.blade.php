@@ -1,7 +1,7 @@
 @extends('layouts.viewer')
 
 @section('css')
-    <link href="{{ URL::asset('css/work-log.css') }}?v=16" rel="stylesheet" type="text/css" />
+    <link href="{{ URL::asset('css/work-log.css') }}?v=19" rel="stylesheet" type="text/css" />
 @endsection
 
 @section('content')
@@ -86,6 +86,7 @@
                                     {{ $names->take(2)->implode(', ') }}@if ($names->count() > 2) +{{ $names->count() - 2 }} lainnya @endif
                                 </span>
                             </div>
+                            @include('includes.work-target-bar', ['task' => $task])
                         </div>
                         <div class="wl-row-status">
                             @if ($row['counts']['menunggu'])

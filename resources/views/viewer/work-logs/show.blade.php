@@ -1,7 +1,7 @@
 @extends('layouts.viewer')
 
 @section('css')
-    <link href="{{ URL::asset('css/work-log.css') }}?v=16" rel="stylesheet" type="text/css" />
+    <link href="{{ URL::asset('css/work-log.css') }}?v=19" rel="stylesheet" type="text/css" />
 @endsection
 
 @section('content')
@@ -25,12 +25,23 @@
                     <dt>ID tugas</dt>
                     <dd>{{ $task->code }}</dd>
                     @if ($task->isDaily())
-                        <dt>Tanggal pengerjaan</dt>
+                        <dt>Jenis tugas</dt>
+                    <dd>{{ $task->has_children ? 'Tugas dengan turunan' : 'Pencatatan' }}</dd>
+                    @if ($task->has_children)
+                        <dt>Mulai</dt>
                         <dd>{{ $task->workedDate()->locale('id')->translatedFormat('l, d F Y') }}</dd>
-                        @if ($task->categoryLabel())<dt>Kategori</dt><dd>{{ $task->categoryLabel() }}</dd>@endif
-                        @if ($task->quantity !== null)<dt>Jumlah output</dt><dd>{{ number_format($task->quantity, 0, ',', '.') }} {{ $task->quantity_unit }}</dd>@endif
+                    @else
+                        <dt>Tanggal pengerjaan</dt>
+                        <dd>{{ $task->dateRangeText() }}</dd>
+                    @endif
+                    @if ($task->deadline)<dt>Tenggat</dt><dd>{{ $task->deadline->locale('id')->translatedFormat('l, d F Y') }}</dd>@endif
+                    @if ($task->categoryLabel())<dt>Kategori</dt><dd>{{ $task->categoryLabel() }}</dd>@endif
+                    @if ($task->quantity_unit)<dt>Satuan output</dt><dd>{{ $task->quantity_unit }}</dd>@endif
+                    @if (! $task->has_children && $task->quantity !== null)<dt>Jumlah output</dt><dd>{{ number_format($task->quantity, 0, ',', '.') }} {{ $task->quantity_unit }}</dd>@endif
+                    @if (! $task->has_children && $task->workStatusLabel())
                         <dt>Status pengerjaan</dt>
                         <dd><span class="wl-badge wl-badge--{{ $task->work_status }}">{{ $task->workStatusLabel() }}</span></dd>
+                    @endif
                     @else
                         <dt>Periode</dt>
                         <dd>{{ $task->dateRangeText() }}</dd>
@@ -43,6 +54,8 @@
 
                 <h4 class="wl-sub-title">{{ $task->isDaily() ? 'Deskripsi / rincian pekerjaan' : 'Instruksi' }}</h4>
                 <div class="wl-desc">{{ $task->description }}</div>
+
+                @include('includes.work-progress', ['task' => $task])
 
                 @if ($task->references->isNotEmpty())
                     <h4 class="wl-sub-title">Referensi Tugas</h4>

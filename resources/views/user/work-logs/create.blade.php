@@ -4,7 +4,7 @@
 
 @section('css')
     <link href="{{ URL::asset('css/cerah-portal.css') }}?v=2" rel="stylesheet" type="text/css" />
-    <link href="{{ URL::asset('css/work-log.css') }}?v=16" rel="stylesheet" type="text/css" />
+    <link href="{{ URL::asset('css/work-log.css') }}?v=19" rel="stylesheet" type="text/css" />
 @endsection
 
 @section('content')
@@ -31,67 +31,10 @@
             <div class="wl-card">
                 @if ($type === 'daily')
                     @php($me = auth()->user())
-                    @php($startLimit = $me->internship_start_date ? \Carbon\Carbon::parse($me->internship_start_date) : null)
-                    <div class="wl-field">
-                        <label class="wl-label" for="work_date">Tanggal pengerjaan <span class="req">*</span></label>
-                        <input type="date" id="work_date" name="work_date" class="wl-input" required
-                            max="{{ now()->toDateString() }}"
-                            @if ($startLimit && $startLimit->lte(now())) min="{{ $startLimit->toDateString() }}" @endif
-                            value="{{ old('work_date', $isEdit ? $task->workedDate()->toDateString() : now()->toDateString()) }}">
-                        <div class="wl-hint">Otomatis hari ini. Ubah bila kemarin lupa mengisi.</div>
-                        @error('work_date') <div class="wl-error">{{ $message }}</div> @enderror
-                    </div>
-
-                    <div class="wl-field">
-                        <label class="wl-label" for="title">Judul / nama aktivitas <span class="req">*</span></label>
-                        <input type="text" id="title" name="title" class="wl-input" maxlength="150" required
-                            value="{{ old('title', optional($task)->title) }}" placeholder="Contoh: Input data transaksi pengadaan ke Acumatica">
-                        @error('title') <div class="wl-error">{{ $message }}</div> @enderror
-                    </div>
-
-                    <div class="wl-field">
-                        <label class="wl-label" for="category">Kategori aktivitas <small>(opsional)</small></label>
-                        <select id="category" name="category" class="wl-select">
-                            <option value="">- Pilih kategori -</option>
-                            @foreach (\App\Models\WorkTask::CATEGORIES as $key => $label)
-                                <option value="{{ $key }}" {{ old('category', optional($task)->category) === $key ? 'selected' : '' }}>{{ $label }}</option>
-                            @endforeach
-                        </select>
-                        @error('category') <div class="wl-error">{{ $message }}</div> @enderror
-                    </div>
-
-                    <div class="wl-field">
-                        <label class="wl-label" for="description">Deskripsi / rincian pekerjaan <span class="req">*</span></label>
-                        <textarea id="description" name="description" class="wl-textarea" maxlength="5000" required
-                            placeholder="Apa yang diinput, sumber datanya, atau hasil penyusunannya.">{{ old('description', optional($task)->description) }}</textarea>
-                        @error('description') <div class="wl-error">{{ $message }}</div> @enderror
-                    </div>
-
-                    <div class="wl-field">
-                        <label class="wl-label">Jumlah output <small>(disarankan)</small></label>
-                        <div class="wl-qty">
-                            <input type="number" name="quantity" class="wl-input" min="0" max="1000000" step="1" placeholder="Contoh: 150"
-                                value="{{ old('quantity', optional($task)->quantity) }}">
-                            <input type="text" name="quantity_unit" class="wl-input" maxlength="40" list="wl-units" placeholder="Satuan: Dokumen / Baris Data / Invoice"
-                                value="{{ old('quantity_unit', optional($task)->quantity_unit) }}">
-                            <datalist id="wl-units"><option value="Dokumen"><option value="Baris Data"><option value="Invoice"></datalist>
-                        </div>
-                        @error('quantity') <div class="wl-error">{{ $message }}</div> @enderror
-                        @error('quantity_unit') <div class="wl-error">{{ $message }}</div> @enderror
-                    </div>
-
-                    <div class="wl-field">
-                        <label class="wl-label">Status pengerjaan <span class="req">*</span></label>
-                        <div style="display: flex; gap: 18px; flex-wrap: wrap;">
-                            @foreach (\App\Models\WorkTask::WORK_STATUSES as $key => $label)
-                                <label style="display: inline-flex; gap: 6px; align-items: center; font-weight: 600; cursor: pointer;">
-                                    <input type="radio" name="work_status" value="{{ $key }}" required
-                                        {{ old('work_status', optional($task)->work_status ?: 'done') === $key ? 'checked' : '' }}> {{ $label }}
-                                </label>
-                            @endforeach
-                        </div>
-                        @error('work_status') <div class="wl-error">{{ $message }}</div> @enderror
-                    </div>
+                    @include('includes.work-daily-fields', [
+                        'task' => $task, 'isEdit' => $isEdit, 'categoryGroups' => ['-' => $categories], 'categoryRequired' => false,
+                        'startLimit' => $me->internship_start_date ? \Carbon\Carbon::parse($me->internship_start_date) : null,
+                    ])
                 @else
                 <div class="wl-field">
                     <label class="wl-label" for="title">Judul tugas <span class="req">*</span></label>
@@ -174,12 +117,16 @@
                     </div>
                 @endif
 
-                @if (!$isEdit && $type !== 'daily')
+                @if (!$isEdit)
+                <div @if ($type === 'daily') data-children-only @if (old('has_children') !== '1') hidden @endif @endif>
                     <hr class="wl-divider">
                     <div class="wl-section-head">
                         <div>
                             <h3 class="wl-section-title" style="margin-bottom: 4px;">Dikerjakan bersama <small style="font-weight: 500; color: var(--cs-soft);">(opsional)</small></h3>
-                            <div class="wl-sub">Pilih teman satu divisi. Mereka akan menerima permintaan untuk mengonfirmasi.</div>
+                            <div class="wl-sub">
+                                Pilih teman satu divisi. Mereka akan menerima permintaan untuk mengonfirmasi.
+                                @if ($type === 'daily') Setelah menerima, tiap teman menambahkan turunannya sendiri (boleh untuk tanggal sebelum bergabung) dan total output dijumlahkan. @endif
+                            </div>
                         </div>
                         <span class="wl-pill-count" data-wl-count>0 dipilih</span>
                     </div>
@@ -201,12 +148,14 @@
                         </div>
                     @endif
                     @error('partners') <div class="wl-error">{{ $message }}</div> @enderror
+                </div>
                 @endif
             </div>
 
             <div style="display: flex; gap: 10px; justify-content: flex-end;">
                 <a href="{{ $isEdit ? route('user.work-logs.show', $task) : route('user.work-logs.index', ['type' => $type]) }}" class="wl-btn">Batal</a>
-                <button type="submit" class="wl-btn wl-btn--primary">{{ $isEdit ? 'Simpan perubahan' : 'Kirim untuk disetujui' }}</button>
+                <button type="submit" class="wl-btn wl-btn--primary"
+                    @if (!$isEdit && $type === 'daily') data-submit-label data-label-children="Buat tugas" data-label-record="Kirim untuk disetujui" @endif>{{ $isEdit ? 'Simpan perubahan' : ($type === 'daily' && old('has_children') === '1' ? 'Buat tugas' : 'Kirim untuk disetujui') }}</button>
             </div>
         </form>
     </div>

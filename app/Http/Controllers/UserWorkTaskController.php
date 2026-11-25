@@ -40,6 +40,7 @@ class UserWorkTaskController extends Controller
         $type = WorkTask::typeParam($request->input('type'));
 
         $tasks = WorkTask::with(['assignees.user.division', 'assignees.user.mentor', 'creator'])
+            ->withSum('progress as progress_sum_quantity', 'quantity')
             ->visibleTo($me)
             ->inMonth($month)
             ->where('work_tasks.type', $type)
@@ -107,6 +108,7 @@ class UserWorkTaskController extends Controller
         return view('user.work-logs.create', [
             'task' => null,
             'type' => WorkTask::typeParam($request->input('type')),
+            'categories' => \App\Models\WorkCategory::namesFor(auth()->user()->division_id),
             'partners' => $this->partnerCandidates(auth()->user()),
         ]);
     }
@@ -147,74 +149,97 @@ class UserWorkTaskController extends Controller
         ];
     }
 
-    /** Aturan & pesan isian khusus tugas harian. */
-    private function dailyRules($user): array
+    /**
+     * Aturan isian tugas harian.
+     * Dengan turunan: satuan wajib, target total opsional (tanggal & jumlah diisi per turunan).
+     * Pencatatan: tanggal mulai, tanggal selesai, jumlah output (+ status pengerjaan).
+     */
+    private function dailyRules($user, $keepCategory = null, bool $children = false, $minDeadline = null): array
     {
-        $dateRules = ['required', 'date', 'before_or_equal:today'];
-        if ($user->internship_start_date) {
-            $start = \Carbon\Carbon::parse($user->internship_start_date);
-            if ($start->lte(now())) {
-                $dateRules[] = 'after_or_equal:' . $start->toDateString();
-            }
+        $allowed = array_values(array_unique(array_filter(array_merge(\App\Models\WorkCategory::namesFor($user->division_id), [$keepCategory]))));
+
+        $rules = [
+            'category' => ['nullable', 'string', 'max:40', \Illuminate\Validation\Rule::in($allowed)],
+            'quantity_unit' => $children ? 'required|string|max:40' : 'nullable|string|max:40|required_with:quantity',
+            'deadline' => ['nullable', 'date', 'after_or_equal:' . ($children ? ($minDeadline ?: 'today') : 'start_date')],
+        ];
+
+        if ($children) {
+            $rules['target_quantity'] = 'nullable|integer|min:1|max:1000000';
+        } else {
+            $rules += $this->dateRules($user);
+            $rules['quantity'] = 'nullable|integer|min:0|max:1000000';
+            $rules['work_status'] = 'required|in:' . implode(',', array_keys(WorkTask::WORK_STATUSES));
         }
 
-        return [
-            'work_date' => $dateRules,
-            'category' => 'nullable|in:' . implode(',', array_keys(WorkTask::CATEGORIES)),
-            'quantity' => 'nullable|integer|min:0|max:1000000',
-            'quantity_unit' => 'nullable|string|max:40|required_with:quantity',
-            'work_status' => 'required|in:' . implode(',', array_keys(WorkTask::WORK_STATUSES)),
-        ];
+        return $rules;
     }
 
     private function dailyMessages(): array
     {
-        return [
-            'work_date.required' => 'Tanggal pengerjaan wajib diisi.',
-            'work_date.date' => 'Tanggal pengerjaan tidak valid.',
-            'work_date.before_or_equal' => 'Tanggal pengerjaan tidak boleh melewati hari ini.',
-            'work_date.after_or_equal' => 'Tanggal pengerjaan tidak boleh sebelum periode magang dimulai.',
+        return array_merge($this->dateMessages(), [
             'category.in' => 'Kategori tidak valid.',
             'quantity.integer' => 'Jumlah output harus berupa angka bulat.',
             'quantity.min' => 'Jumlah output tidak boleh negatif.',
+            'quantity_unit.required' => 'Satuan output wajib diisi untuk tugas dengan turunan.',
             'quantity_unit.required_with' => 'Satuan output wajib diisi bila jumlah diisi.',
+            'target_quantity.min' => 'Target minimal 1.',
+            'deadline.date' => 'Tenggat tidak valid.',
+            'deadline.after_or_equal' => 'Tenggat tidak boleh sebelum tanggal mulai tugas.',
             'work_status.required' => 'Status pengerjaan wajib dipilih.',
             'work_status.in' => 'Status pengerjaan tidak valid.',
-        ];
+        ]);
     }
 
     private function storeDaily(Request $request)
     {
         $me = auth()->user();
+        $children = $request->boolean('has_children');
 
         $data = $request->validate(array_merge([
             'title' => 'required|string|max:150',
             'description' => 'required|string|max:5000',
+            'partners' => 'nullable|array',
+            'partners.*' => 'integer',
             'link_urls' => 'nullable|array|max:10',
             'link_urls.*' => 'nullable|url|max:500',
             'link_labels' => 'nullable|array',
             'link_labels.*' => 'nullable|string|max:120',
-        ], $this->dailyRules($me), $this->attachmentRules()), array_merge($this->attachmentMessages(), $this->dailyMessages(), [
+        ], $this->dailyRules($me, null, $children), $this->attachmentRules()), array_merge($this->attachmentMessages(), $this->dailyMessages(), [
             'link_urls.max' => 'Maksimal 10 tautan.',
             'link_urls.*.url' => 'Tautan harus diawali http:// atau https://.',
         ]));
 
+        // Kolaborasi hanya untuk tugas dengan turunan; pencatatan tetap milik satu orang.
+        $partnerIds = $children ? array_values(array_unique(array_map('intval', $data['partners'] ?? []))) : [];
+        if (array_diff($partnerIds, $this->partnerCandidates($me)->pluck('id')->all())) {
+            return back()->withInput()->withErrors(['partners' => 'Teman yang dipilih harus satu divisi dengan Anda.']);
+        }
+
         $links = $this->pairLinks($data['link_urls'] ?? [], $data['link_labels'] ?? []);
 
-        DB::transaction(function () use ($data, $me, $request, $links) {
+        $task = null;
+        DB::transaction(function () use ($data, $me, $request, $links, $children, $partnerIds, &$task) {
+            $hasQty = ! $children && isset($data['quantity']) && $data['quantity'] !== null;
+            $unit = trim((string) ($data['quantity_unit'] ?? ''));
+            $start = $children ? now()->toDateString() : $data['start_date'];
+            $deadline = $data['deadline'] ?? null;
+
             $task = WorkTask::create([
                 'type' => WorkTask::TYPE_DAILY,
                 'code' => WorkTask::generateCode(WorkTask::TYPE_DAILY, WorkTask::divisionIdFor($me->id)),
                 'title' => trim($data['title']),
                 'description' => trim($data['description']),
                 'category' => $data['category'] ?? null,
-                'quantity' => isset($data['quantity']) && $data['quantity'] !== null ? (int) $data['quantity'] : null,
-                'quantity_unit' => isset($data['quantity']) && $data['quantity'] !== null ? trim($data['quantity_unit']) : null,
-                'work_status' => $data['work_status'],
-                'deadline' => null,
-                'worked_on' => $data['work_date'],
-                'start_date' => $data['work_date'],
-                'end_date' => $data['work_date'],
+                'has_children' => $children,
+                'target_quantity' => $children && ! empty($data['target_quantity']) ? (int) $data['target_quantity'] : null,
+                'quantity' => $hasQty ? (int) $data['quantity'] : null,
+                'quantity_unit' => $unit !== '' ? $unit : null,
+                'work_status' => $children ? null : $data['work_status'],
+                'deadline' => $deadline,
+                'worked_on' => $start,
+                'start_date' => $start,
+                'end_date' => $children ? $deadline : $data['end_date'],
                 'require_attachment' => false,
                 'is_self' => true,
                 'created_by' => $me->id,
@@ -223,12 +248,29 @@ class UserWorkTaskController extends Controller
             $assignee = WorkTaskAssignee::create([
                 'work_task_id' => $task->id,
                 'user_id' => $me->id,
-                'status' => WorkTaskAssignee::MENUNGGU,
-                'submitted_at' => now(),
+                // Pencatatan langsung diajukan; tugas dengan turunan diajukan setelah turunannya terisi.
+                'status' => $children ? WorkTaskAssignee::BELUM : WorkTaskAssignee::MENUNGGU,
+                'submitted_at' => $children ? null : now(),
             ]);
 
             $this->addAttachments($task, $assignee, (array) $request->file('files', []), null, null, $links);
+
+            foreach ($partnerIds as $partnerId) {
+                WorkTaskPartnerRequest::create([
+                    'work_task_id' => $task->id,
+                    'from_user_id' => $me->id,
+                    'to_user_id' => $partnerId,
+                    'status' => WorkTaskPartnerRequest::PENDING,
+                ]);
+            }
         });
+
+        if ($children) {
+            flash()->success('Berhasil', 'Tugas dibuat. Tambahkan turunan (tanggal pengerjaan + jumlah output) di bawah.'
+                . ($partnerIds ? ' Permintaan dikirim ke teman.' : ''));
+
+            return redirect()->route('user.work-logs.show', $task);
+        }
 
         flash()->success('Berhasil', 'Tugas harian dicatat dan menunggu persetujuan mentor.');
 
@@ -322,6 +364,7 @@ class UserWorkTaskController extends Controller
 
         $task->load('creator', 'references.uploader', 'assignees.user.division', 'assignees.user.mentor', 'assignees.attachments.uploader');
         $mine = $task->assignees->firstWhere('user_id', $me->id);
+        $canInvite = $task->canInviteBy($me);
 
         return view('user.work-logs.show', [
             'task' => $task,
@@ -333,7 +376,83 @@ class UserWorkTaskController extends Controller
             'canEdit' => $task->canBeEditedBy($me),
             'canAddRef' => $task->canAddReferencesBy($me),
             'canCancel' => $task->canBeCancelledBy($me),
+            'canInvite' => $canInvite,
+            'inviteCandidates' => $canInvite ? $this->inviteCandidates($task, $me) : collect(),
+            'invites' => $task->is_self
+                ? $task->partnerRequests()->with('to')->whereIn('status', [WorkTaskPartnerRequest::PENDING, WorkTaskPartnerRequest::DECLINED])->orderBy('id')->get()
+                : collect(),
         ]);
+    }
+
+    /** Undang teman satu divisi ke tugas yang sudah berjalan (alurnya sama dengan saat membuat tugas). */
+    public function invite(Request $request, WorkTask $task)
+    {
+        $me = auth()->user();
+        abort_unless($task->canInviteBy($me), 403);
+
+        $data = $request->validate([
+            'partners' => 'required|array|min:1',
+            'partners.*' => 'integer',
+        ], ['partners.required' => 'Pilih minimal satu teman.', 'partners.min' => 'Pilih minimal satu teman.']);
+
+        $ids = array_values(array_unique(array_map('intval', $data['partners'])));
+        $candidates = $this->inviteCandidates($task, $me);
+
+        if (array_diff($ids, $candidates->pluck('id')->all())) {
+            return back()->withErrors(['partners' => 'Teman yang dipilih tidak valid, beda divisi, atau sudah terlibat.']);
+        }
+
+        DB::transaction(function () use ($task, $me, $ids) {
+            foreach ($ids as $id) {
+                // Undangan yang pernah ditolak dibuka lagi (satu baris per tugas & teman).
+                WorkTaskPartnerRequest::updateOrCreate(
+                    ['work_task_id' => $task->id, 'to_user_id' => $id],
+                    ['from_user_id' => $me->id, 'status' => WorkTaskPartnerRequest::PENDING, 'responded_at' => null]
+                );
+            }
+        });
+
+        TaskHistory::record($task, $me, [TaskHistory::note('Kolaborasi', 'Mengundang: ' . $candidates->whereIn('id', $ids)->pluck('name')->implode(', '))]);
+
+        flash()->success('Berhasil', 'Undangan dikirim ke ' . count($ids) . ' teman.');
+
+        return redirect()->route('user.work-logs.show', $task);
+    }
+
+    /** Pengirim membatalkan undangan yang masih menunggu. Undangan yang sudah diterima/ditolak tidak bisa dibatalkan. */
+    public function cancelInvite(WorkTask $task, WorkTaskPartnerRequest $partnerRequest)
+    {
+        $me = auth()->user();
+
+        abort_unless((int) $partnerRequest->work_task_id === (int) $task->id, 404);
+        abort_unless((int) $partnerRequest->from_user_id === (int) $me->id, 403);
+
+        if ($partnerRequest->status !== WorkTaskPartnerRequest::PENDING) {
+            flash()->error('Gagal', 'Undangan ini sudah diproses, tidak bisa dibatalkan.');
+
+            return redirect()->route('user.work-logs.show', $task);
+        }
+
+        $name = optional($partnerRequest->to)->name ?: '-';
+        $partnerRequest->delete();
+
+        TaskHistory::record($task, $me, [TaskHistory::note('Kolaborasi', 'Membatalkan undangan: ' . $name)]);
+
+        flash()->success('Berhasil', 'Undangan ke ' . $name . ' dibatalkan.');
+
+        return redirect()->route('user.work-logs.show', $task);
+    }
+
+    /** Teman satu divisi yang belum terlibat dan belum punya undangan menunggu pada tugas ini. */
+    private function inviteCandidates(WorkTask $task, User $me)
+    {
+        $busy = $task->assignees()->pluck('user_id')
+            ->merge($task->partnerRequests()->where('status', WorkTaskPartnerRequest::PENDING)->pluck('to_user_id'))
+            ->all();
+
+        return $this->partnerCandidates($me)->reject(function ($u) use ($busy) {
+            return in_array($u->id, $busy, true);
+        })->values();
     }
 
     public function edit(WorkTask $task)
@@ -350,6 +469,7 @@ class UserWorkTaskController extends Controller
         return view('user.work-logs.create', [
             'task' => $task,
             'type' => $task->type,
+            'categories' => array_values(array_unique(array_filter(array_merge(\App\Models\WorkCategory::namesFor($me->division_id), [$task->category])))),
             'partners' => collect(),
         ]);
     }
@@ -371,7 +491,7 @@ class UserWorkTaskController extends Controller
         ];
         $messages = $this->dateMessages();
         if ($task->isDaily()) {
-            $rules += $this->dailyRules($me);
+            $rules += $this->dailyRules($me, $task->category, (bool) $task->has_children, $task->workedDate()->toDateString());
             $messages += $this->dailyMessages();
         } elseif ($task->is_self) {
             $rules += $this->dateRules($me);
@@ -389,32 +509,54 @@ class UserWorkTaskController extends Controller
         $fmt = function ($d) { return \Carbon\Carbon::parse($d)->locale('id')->translatedFormat('d M Y'); };
         $dateUpdate = [];
         if ($task->isDaily()) {
-            $newDate = \Carbon\Carbon::parse($data['work_date'])->toDateString();
-            $oldDate = $task->workedDate()->toDateString();
-            if ($oldDate !== $newDate) {
-                $changes[] = TaskHistory::change('Tanggal pengerjaan', $fmt($oldDate), $fmt($newDate));
-            }
-            $hasQty = isset($data['quantity']) && $data['quantity'] !== null;
-            $newQty = $hasQty ? (int) $data['quantity'] : null;
-            if ($task->quantity !== $newQty || (string) $task->quantity_unit !== ($hasQty ? trim($data['quantity_unit']) : '')) {
-                $changes[] = TaskHistory::change('Jumlah output',
-                    $task->quantity !== null ? $task->quantity . ' ' . $task->quantity_unit : '-',
-                    $hasQty ? $newQty . ' ' . trim($data['quantity_unit']) : '-');
-            }
-            if ((string) $task->work_status !== $data['work_status']) {
-                $changes[] = TaskHistory::change('Status pengerjaan', $task->workStatusLabel() ?: '-', WorkTask::WORK_STATUSES[$data['work_status']]);
-            }
+            $children = (bool) $task->has_children;
+            $unit = trim((string) ($data['quantity_unit'] ?? ''));
+            $deadline = $data['deadline'] ?? null;
+
             if ((string) $task->category !== (string) ($data['category'] ?? '')) {
-                $changes[] = TaskHistory::change('Kategori', $task->categoryLabel() ?: '-', WorkTask::CATEGORIES[$data['category'] ?? ''] ?? '-');
+                $changes[] = TaskHistory::change('Kategori', $task->categoryLabel() ?: '-', ($data['category'] ?? '-'));
+            }
+            if ((string) $task->quantity_unit !== $unit) {
+                $changes[] = TaskHistory::change('Satuan output', $task->quantity_unit ?: '-', $unit !== '' ? $unit : '-');
+            }
+            if (optional($task->deadline)->toDateString() !== $deadline) {
+                $changes[] = TaskHistory::change('Tenggat', $task->deadline ? $fmt($task->deadline) : '-', $deadline ? $fmt($deadline) : '-');
             }
 
             $dateUpdate = [
-                'worked_on' => $newDate, 'start_date' => $newDate, 'end_date' => $newDate,
                 'category' => $data['category'] ?? null,
-                'quantity' => $newQty,
-                'quantity_unit' => $hasQty ? trim($data['quantity_unit']) : null,
-                'work_status' => $data['work_status'],
+                'quantity_unit' => $unit !== '' ? $unit : null,
+                'deadline' => $deadline,
             ];
+
+            if ($children) {
+                $newTarget = ! empty($data['target_quantity']) ? (int) $data['target_quantity'] : null;
+                if ($task->target_quantity !== $newTarget) {
+                    $changes[] = TaskHistory::change('Target total', $task->target_quantity !== null ? (string) $task->target_quantity : '-', $newTarget !== null ? (string) $newTarget : '-');
+                }
+                $dateUpdate += ['target_quantity' => $newTarget, 'end_date' => $deadline];
+            } else {
+                $oldStart = $task->workedDate()->toDateString();
+                $oldEnd = optional($task->endDate())->toDateString();
+                $newStart = \Carbon\Carbon::parse($data['start_date'])->toDateString();
+                $newEnd = \Carbon\Carbon::parse($data['end_date'])->toDateString();
+                if ($oldStart !== $newStart) { $changes[] = TaskHistory::change('Tanggal mulai', $fmt($oldStart), $fmt($newStart)); }
+                if ($oldEnd !== $newEnd) { $changes[] = TaskHistory::change('Tanggal selesai', $oldEnd ? $fmt($oldEnd) : '-', $fmt($newEnd)); }
+
+                $hasQty = isset($data['quantity']) && $data['quantity'] !== null;
+                $newQty = $hasQty ? (int) $data['quantity'] : null;
+                if ($task->quantity !== $newQty) {
+                    $changes[] = TaskHistory::change('Jumlah output', $task->quantity !== null ? (string) $task->quantity : '-', $hasQty ? (string) $newQty : '-');
+                }
+                if ((string) $task->work_status !== $data['work_status']) {
+                    $changes[] = TaskHistory::change('Status pengerjaan', $task->workStatusLabel() ?: '-', WorkTask::WORK_STATUSES[$data['work_status']]);
+                }
+
+                $dateUpdate += [
+                    'worked_on' => $newStart, 'start_date' => $newStart, 'end_date' => $newEnd,
+                    'quantity' => $newQty, 'work_status' => $data['work_status'],
+                ];
+            }
         } elseif (isset($data['start_date'], $data['end_date'])) {
             $oldStart = $task->workedDate()->toDateString();
             $oldEnd = optional($task->endDate())->toDateString();
@@ -655,11 +797,19 @@ class UserWorkTaskController extends Controller
             ]);
         });
 
+        if ($partnerRequest->task) {
+            TaskHistory::record($partnerRequest->task, $me, [TaskHistory::note(
+                'Kolaborasi',
+                ($data['action'] === 'accept' ? 'Bergabung: ' : 'Menolak undangan: ') . $me->name
+            )]);
+        }
+
         flash()->success('Berhasil', $data['action'] === 'accept'
             ? 'Permintaan diterima, tugas muncul di log pekerjaan Anda.'
             : 'Permintaan ditolak.');
 
-        return redirect()->route('user.work-logs.index');
+        // Buka tab sesuai jenis tugas (proyek / harian).
+        return redirect()->route('user.work-logs.index', ['type' => optional($partnerRequest->task)->type ?: WorkTask::TYPE_PROJECT]);
     }
 
     /** Baris penerima milik peserta ini; lampiran hanya bisa diubah selama belum "sudah". */

@@ -203,9 +203,10 @@
                         </div>
                     </li>
                     <li>
-                        <a class="btn-logout-topbar" href="{{ route('logout') }}" title="{{ __('global.logout') }}"
+                        <a class="btn btn-danger btn-sm" href="{{ route('logout') }}" title="{{ __('global.logout') }}"
+                            style="padding: 6px 14px; font-weight: 600;"
                             onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-                            <i class="mdi mdi-power" style="font-size: 20px;"></i>
+                            Keluar
                         </a>
                         <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
                             @csrf

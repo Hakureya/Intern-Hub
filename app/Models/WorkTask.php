@@ -11,11 +11,12 @@ class WorkTask extends Model
     public const TYPE_PROJECT = 'project';
     public const TYPE_DAILY = 'daily';
 
-    public const CATEGORIES = [
-        'input_data' => 'Input Data',
-        'validasi' => 'Penyusunan & Validasi Data',
-        'administrasi' => 'Administrasi',
-        'lainnya' => 'Lainnya',
+    /** Kategori standar bila divisi belum punya daftar kategori sendiri. */
+    public const DEFAULT_CATEGORIES = [
+        'Input Data',
+        'Penyusunan & Validasi Data',
+        'Administrasi',
+        'Lainnya',
     ];
 
     public const WORK_STATUSES = [
@@ -27,6 +28,8 @@ class WorkTask extends Model
     protected $fillable = [
         'type',
         'code',
+        'target_quantity',
+        'has_children',
         'category',
         'quantity',
         'quantity_unit',
@@ -53,7 +56,78 @@ class WorkTask extends Model
         'require_attachment' => 'boolean',
         'is_self' => 'boolean',
         'quantity' => 'integer',
+        'has_children' => 'boolean',
     ];
+
+    public function progress()
+    {
+        return $this->hasMany(WorkTaskProgress::class, 'work_task_id')->orderBy('entry_date')->orderBy('id');
+    }
+
+    /** Tugas harian bertarget (mis. 500 dokumen sebelum tenggat). */
+    public function hasTarget(): bool
+    {
+        return $this->target_quantity !== null && (int) $this->target_quantity > 0;
+    }
+
+    /** Total jumlah dari seluruh catatan progres (memakai withSum bila sudah dimuat). */
+    public function progressTotal(): int
+    {
+        if (array_key_exists('progress_sum_quantity', $this->attributes)) {
+            return (int) $this->attributes['progress_sum_quantity'];
+        }
+
+        return (int) $this->progress()->sum('quantity');
+    }
+
+    public function progressPercent(): int
+    {
+        return $this->hasTarget() ? (int) min(100, floor($this->progressTotal() * 100 / $this->target_quantity)) : 0;
+    }
+
+    /** Peserta (yang mengerjakan & belum selesai/batal) atau mentor/admin terkait boleh menambah catatan. */
+    public function canAddProgressBy(?User $user): bool
+    {
+        if (! $user || $user->isViewer() || ! $this->isVisibleTo($user)) {
+            return false;
+        }
+        // Tugas harian pencatatan (tanpa turunan) tidak punya turunan/catatan progres.
+        if ($this->isDaily() && ! $this->has_children) {
+            return false;
+        }
+        if ($user->hasRole('admin') || $user->isMentor()) {
+            return true;
+        }
+        $mine = $this->assignees()->where('user_id', $user->id)->first();
+
+        return $mine && ! in_array($mine->status, [WorkTaskAssignee::SUDAH, WorkTaskAssignee::BATAL], true);
+    }
+
+    /** Peserta yang masih mengerjakan boleh mengundang teman ke tugas yang ia/rekannya buat (proyek, atau harian dengan turunan). */
+    public function canInviteBy(?User $user): bool
+    {
+        if (! $user || $user->isViewer() || ! $this->is_self) {
+            return false;
+        }
+        if ($this->isDaily() && ! $this->has_children) {
+            return false;
+        }
+        $mine = $this->assignees()->where('user_id', $user->id)->first();
+
+        return $mine && ! in_array($mine->status, [WorkTaskAssignee::SUDAH, WorkTaskAssignee::BATAL], true);
+    }
+
+    public function canRemoveProgressBy(?User $user, WorkTaskProgress $entry): bool
+    {
+        if (! $user || $user->isViewer() || ! $this->isVisibleTo($user)) {
+            return false;
+        }
+        if ($user->hasRole('admin') || $user->isMentor()) {
+            return true;
+        }
+
+        return (int) $entry->user_id === (int) $user->id && $this->canAddProgressBy($user);
+    }
 
     public function isDaily(): bool
     {
@@ -62,7 +136,7 @@ class WorkTask extends Model
 
     public function categoryLabel(): ?string
     {
-        return self::CATEGORIES[$this->category] ?? null;
+        return $this->category ?: null;
     }
 
     public function workStatusLabel(): ?string
@@ -279,10 +353,24 @@ class WorkTask extends Model
         $start = Carbon::createFromFormat('!Y-m', $month)->startOfMonth()->toDateString();
         $end = Carbon::createFromFormat('!Y-m', $month)->endOfMonth()->toDateString();
 
-        return $query->whereRaw(
-            'COALESCE(work_tasks.end_date, work_tasks.deadline, work_tasks.worked_on, work_tasks.start_date, DATE(work_tasks.created_at)) BETWEEN ? AND ?',
-            [$start, $end]
-        );
+        // Tugas biasa: dihitung pada bulan tanggal selesainya. Tugas dengan turunan: tampil di bulan mulai, bulan tenggat,
+        // bulan-bulan di antaranya, dan setiap bulan yang memiliki turunan (agar tetap terlihat selama dikerjakan).
+        return $query->where(function ($q) use ($start, $end) {
+            $q->whereRaw(
+                'COALESCE(work_tasks.end_date, work_tasks.deadline, work_tasks.worked_on, work_tasks.start_date, DATE(work_tasks.created_at)) BETWEEN ? AND ?',
+                [$start, $end]
+            )->orWhere(function ($t) use ($start, $end) {
+                $t->where('work_tasks.has_children', true)->where(function ($x) use ($start, $end) {
+                    $x->whereRaw('DATE(COALESCE(work_tasks.start_date, work_tasks.worked_on, work_tasks.created_at)) BETWEEN ? AND ?', [$start, $end])
+                        ->orWhereRaw('DATE(COALESCE(work_tasks.start_date, work_tasks.worked_on, work_tasks.created_at)) <= ? AND work_tasks.deadline IS NOT NULL AND DATE(work_tasks.deadline) >= ?', [$end, $start])
+                        ->orWhereExists(function ($e) use ($start, $end) {
+                            $e->select(DB::raw(1))->from('work_task_progress')
+                                ->whereColumn('work_task_progress.work_task_id', 'work_tasks.id')
+                                ->whereBetween('work_task_progress.entry_date', [$start, $end]);
+                        });
+                });
+            });
+        });
     }
 
     /** Admin & super admin: semua. Mentor: tugas buatannya + tugas yang dicatat peserta divisinya. Peserta: tugas miliknya. */

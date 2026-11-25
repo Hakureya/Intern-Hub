@@ -45,9 +45,11 @@
     <a class="cs-side-link {{ $isHomeActive ? 'active' : '' }}" href="{{ route('home') }}">
         <i class="mdi mdi-home-outline"></i> Home
     </a>
-    <a class="cs-side-link {{ $activeTab === 'directory' ? 'active' : '' }}" href="{{ route('directory.index') }}">
+    
+    {{-- <a class="cs-side-link {{ $activeTab === 'directory' ? 'active' : '' }}" href="{{ route('directory.index') }}">
         <i class="mdi mdi-account-search-outline"></i> Direktori Peserta
-    </a>
+    </a> --}}
+
     <a class="cs-side-link {{ $activeTab === 'attendance' ? 'active' : '' }}"
         href="{{ route('user.attendance.index') }}">
         <i class="mdi mdi-clock-outline"></i> Kehadiran

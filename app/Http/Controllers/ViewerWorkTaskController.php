@@ -32,6 +32,7 @@ class ViewerWorkTaskController extends Controller
         }
 
         $tasks = WorkTask::with(['assignees.user.division', 'creator'])
+            ->withSum('progress as progress_sum_quantity', 'quantity')
             ->visibleTo($viewer)
             ->inMonth($month)
             ->where('work_tasks.type', $type)

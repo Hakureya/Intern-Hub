@@ -1,0 +1,88 @@
+/* Perayaan jam pulang (6 animasi, dipilih acak per hari). Tanpa latar gelap: animasi tampil langsung di atas halaman.
+   Warna PLN: biru #1E73BE, kuning #FFC400, merah #E4262C. */
+.co-overlay { position: fixed; inset: 0; z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: transparent; opacity: 0; transition: opacity .25s ease; cursor: pointer; }
+.co-overlay.is-in { opacity: 1; }
+.co-stage { position: relative; width: min(340px, 82vw); aspect-ratio: 1; }
+.co-stage svg { width: 100%; height: 100%; overflow: visible; display: block; filter: drop-shadow(0 6px 16px rgba(11, 42, 74, .28)); }
+.co-caption { color: #0b2a4a; text-align: center; margin-top: 16px; padding: 12px 26px 14px; background: #fff; border-radius: 16px;
+    box-shadow: 0 10px 34px rgba(11, 42, 74, .22); opacity: 0; animation: co-fade .6s 2.3s ease-out forwards; }
+.co-caption b { display: block; font-size: 18px; letter-spacing: .01em; }
+.co-caption em { display: block; font-style: normal; font-size: 30px; font-weight: 800; color: #1E73BE; margin: 2px 0; }
+.co-caption span { font-size: 14px; color: #52677a; }
+@keyframes co-fade { to { opacity: 1; } }
+@keyframes co-pop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+/* Partikel & gelombang (dibuat lewat JS) */
+.co-p { position: absolute; width: var(--s, 6px); height: var(--s, 6px); margin: calc(var(--s, 6px) / -2) 0 0 calc(var(--s, 6px) / -2); border-radius: 50%;
+    background: var(--c); opacity: 0; animation: co-burst var(--d, .9s) var(--t, 0s) ease-out forwards; box-shadow: 0 0 8px var(--c); }
+.co-p.star { border-radius: 0; box-shadow: none; clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+@keyframes co-burst { 0% { opacity: 1; transform: translate(0, 0) scale(1) rotate(0); } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(.2) rotate(180deg); } }
+.co-ring { position: absolute; border: 3px solid var(--c); border-radius: 50%; opacity: 0; animation: co-ring 1.2s var(--t, 0s) ease-out forwards; }
+@keyframes co-ring { 0% { opacity: .95; transform: scale(.3); } 100% { opacity: 0; transform: scale(3.4); } }
+.co-twinkle { position: absolute; width: 6px; height: 6px; background: #FFC400; box-shadow: 0 0 6px #1E73BE; border-radius: 50%; opacity: 0; animation: co-twinkle 1.1s var(--t) ease-in-out infinite; }
+@keyframes co-twinkle { 0%, 100% { opacity: 0; } 50% { opacity: .9; } }
+.co-svg-fb { transform-box: fill-box; transform-origin: center; }
+
+/* 1. Logo PLN: tiga gelombang biru, petir merah menyambar */
+.co1-tile { transform-box: fill-box; transform-origin: center; animation: co-pop .45s ease-out both, co1-hit .5s 1.3s ease-out; }
+@keyframes co1-hit { 0% { transform: scale(1); } 40% { transform: scale(1.07); } 100% { transform: scale(1); } }
+.co1-wave { opacity: 0; animation: co1-wave .5s var(--t) ease-out forwards; }
+@keyframes co1-wave { from { opacity: 0; transform: translateX(-40px); } to { opacity: 1; transform: none; } }
+.co1-bolt { transform-box: fill-box; transform-origin: center; animation: co1-bolt .45s .85s cubic-bezier(.5, 0, .9, .5) both, co1-flash .5s 1.3s ease-out; }
+@keyframes co1-bolt { 0% { transform: translate(30px, -250px) rotate(12deg) scale(1.5); opacity: 0; } 20% { opacity: 1; } 100% { transform: none; opacity: 1; } }
+@keyframes co1-flash { 0% { filter: brightness(1); } 40% { filter: brightness(1.5) drop-shadow(0 0 10px #fff); } 100% { filter: brightness(1); } }
+.co1-glare { opacity: 0; animation: co1-glare .45s 1.3s ease-out; }
+@keyframes co1-glare { 0% { opacity: .8; } 100% { opacity: 0; } }
+
+/* 2. Bola lampu menyala */
+.co2-bulb { transform-box: fill-box; transform-origin: center; animation: co2-pulse .45s 1.45s ease-out, co2-glow 1s 1.45s ease-out forwards; }
+.co2-glass { fill: #90a4ae; opacity: 0; animation: co2-dim .5s ease-out forwards, co2-on .35s 1.45s ease-out forwards; }
+@keyframes co2-dim { to { opacity: .45; } }
+@keyframes co2-on { from { fill: #90a4ae; stroke: #90a4ae; opacity: .45; } to { fill: #FFC400; stroke: #E6A800; opacity: 1; } }
+@keyframes co2-pulse { 0% { transform: scale(1); } 45% { transform: scale(1.09); } 100% { transform: scale(1); } }
+@keyframes co2-glow { from { filter: drop-shadow(0 0 0 rgba(255, 196, 0, 0)); } to { filter: drop-shadow(0 0 22px rgba(255, 196, 0, .95)); } }
+.co2-fil { stroke: #78909c; animation: co2-fil .2s 1.45s forwards; }
+@keyframes co2-fil { to { stroke: #fff6c8; } }
+.co2-wire { stroke-dasharray: 100; stroke-dashoffset: 100; animation: co2-draw .85s .5s ease-in forwards; filter: drop-shadow(0 0 5px #FFC400); }
+@keyframes co2-draw { to { stroke-dashoffset: 0; } }
+.co2-ray { opacity: 0; animation: co2-ray .45s 1.5s ease-out forwards; }
+@keyframes co2-ray { 0% { opacity: 0; transform: translate(calc(var(--rx) * -1), calc(var(--ry) * -1)); } 100% { opacity: 1; transform: none; } }
+
+/* 3. Colokan tersambung */
+.co3-plug { animation: co3-plug .95s .3s ease-in-out both; }
+.co3-sock { animation: co3-sock .95s .3s ease-in-out both; }
+@keyframes co3-plug { 0% { transform: translateX(-130px); } 65% { transform: translateX(9px); } 80% { transform: translateX(-3px); } 100% { transform: none; } }
+@keyframes co3-sock { 0% { transform: translateX(130px); } 65% { transform: translateX(-9px); } 80% { transform: translateX(3px); } 100% { transform: none; } }
+.co3-flow { stroke-dasharray: 100; stroke-dashoffset: 100; animation: co2-draw .6s 1.15s ease-out forwards; filter: drop-shadow(0 0 4px #FFC400); }
+.co3-check { transform-box: fill-box; transform-origin: center; animation: co-pop .4s 1.35s cubic-bezier(.3, 1.6, .5, 1) both; }
+
+/* 4. Baterai terisi penuh */
+.co4-bar { transform-box: fill-box; transform-origin: bottom; transform: scaleY(0); animation: co4-bar .25s ease-out forwards; }
+@keyframes co4-bar { to { transform: scaleY(1); } }
+.co4-bolt { transform-box: fill-box; transform-origin: center; animation: co-pop .4s 1.8s cubic-bezier(.3, 1.6, .5, 1) both; filter: drop-shadow(0 0 8px #FFC400); }
+.co4-shine { animation: co4-shine .8s 2s ease-in-out both; }
+@keyframes co4-shine { from { transform: translateX(-70px) skewX(-20deg); } to { transform: translateX(300px) skewX(-20deg); } }
+
+/* 5. Petir menjadi roket */
+.co5-bolt { transform-box: fill-box; transform-origin: center; animation: co-pop .4s ease-out both, co5-out .35s .85s ease-in forwards; }
+@keyframes co5-out { to { transform: scale(0) rotate(160deg); opacity: 0; } }
+.co5-rocket { animation: co5-fly 1.15s 1.35s cubic-bezier(.55, 0, 1, .55) forwards; }
+@keyframes co5-fly { to { transform: translateY(-520px); } }
+.co5-in { transform-box: fill-box; transform-origin: center; animation: co5-in .45s .95s cubic-bezier(.3, 1.5, .5, 1) both; }
+@keyframes co5-in { from { transform: scale(0) rotate(-40deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.co5-flame { transform-box: fill-box; transform-origin: top; animation: co5-flame .12s linear infinite alternate; }
+@keyframes co5-flame { from { transform: scaleY(.8); } to { transform: scaleY(1.3); } }
+
+/* 6. Jaringan gardu menyala */
+.co6-flow { stroke-dasharray: 100; stroke-dashoffset: 100; animation: co2-draw .5s var(--t) ease-out forwards; filter: drop-shadow(0 0 4px #FFC400); }
+.co6-node { transform-box: fill-box; transform-origin: center; animation: co-pop .25s var(--t) ease-out both; }
+.co6-lamp { fill: #37474f; animation: co6-lamp .35s var(--t) ease-out forwards; }
+@keyframes co6-lamp { to { fill: #FFC400; filter: drop-shadow(0 0 12px #FFC400); } }
+.co6-tower { stroke: #1E73BE; animation: co6-tower .4s 2.1s ease-out forwards; }
+@keyframes co6-tower { to { stroke: #FFC400; filter: drop-shadow(0 0 8px #FFC400); } }
+
+@media (prefers-reduced-motion: reduce) {
+    .co-stage { display: none; }
+    .co-caption { animation-delay: 0s; }
+}

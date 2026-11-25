@@ -47,6 +47,71 @@
         return parts.length ? parts.map(function (w) { return w.charAt(0).toUpperCase(); }).join('') : '-';
     }
 
+    var FIT_SELECTOR = '.pc-id-name span, .pc-id-info b';
+    var FIT_MIN = 0.4;
+
+    function fitText(el) {
+        el.style.removeProperty('--pc-fit');
+        var scale = 1;
+        for (var i = 0; i < 5; i++) {
+            var box = el.clientWidth, need = el.scrollWidth;
+            // box = 0: kartu sedang tidak tampil (display: none); akan diukur ulang oleh ResizeObserver saat tampil
+            if (!box || need <= box) { break; }
+            scale = Math.max(FIT_MIN, scale * (box / need) * 0.98);
+            el.style.setProperty('--pc-fit', scale.toFixed(3));
+            if (scale <= FIT_MIN) { break; }
+        }
+    }
+
+    function fitCard(card) {
+        [].forEach.call(card.querySelectorAll(FIT_SELECTOR), fitText);
+    }
+
+    var fitQueue = [];
+    var fitScheduled = false;
+
+    // Kumpulkan beberapa permintaan lalu ukur sekali per frame.
+    function queueFit(card) {
+        if (!card) { return; }
+        if (fitQueue.indexOf(card) === -1) { fitQueue.push(card); }
+        if (fitScheduled) { return; }
+        fitScheduled = true;
+        window.requestAnimationFrame(function () {
+            var list = fitQueue;
+            fitQueue = [];
+            fitScheduled = false;
+            list.forEach(fitCard);
+        });
+    }
+
+    // Ukur ulang saat kartu berubah ukuran / baru tampil, dan saat isinya diganti (mis. pratinjau profil yang mengikuti isian form).
+    var sizeWatcher = window.ResizeObserver ? new ResizeObserver(function (entries) {
+        entries.forEach(function (en) { queueFit(en.target); });
+    }) : null;
+    var textWatcher = window.MutationObserver ? new MutationObserver(function (muts) {
+        muts.forEach(function (m) {
+            var node = m.target.nodeType === 1 ? m.target : m.target.parentNode;
+            queueFit(node && node.closest ? node.closest('.pc-id') : null);
+        });
+    }) : null;
+
+    function watchCard(card) {
+        if (!card) { return; }
+        queueFit(card);
+        if (card.__pcWatched) { return; }
+        card.__pcWatched = true;
+        if (sizeWatcher) { sizeWatcher.observe(card); }
+        if (textWatcher) { textWatcher.observe(card, { childList: true, characterData: true, subtree: true }); }
+    }
+
+    function watchCards(root) {
+        [].forEach.call((root || document).querySelectorAll('.pc-id'), watchCard);
+    }
+
+    function refitAll() {
+        [].forEach.call(document.querySelectorAll('.pc-id'), queueFit);
+    }
+
     function rowsHtml(rows) {
         return (rows || []).map(function (r) {
             return '<li><span class="pc-id-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
@@ -113,6 +178,7 @@
         overlay.classList.remove('is-open', 'is-settled', 'is-skipped');
         void overlay.offsetWidth; // mulai ulang animasi
         overlay.classList.add('is-open');
+        watchCards(overlay);
         // gulir baru aktif setelah animasi selesai (mencegah scrollbar berkedip saat kartu berputar)
         settleTimer = setTimeout(function () { overlay.classList.add('is-settled'); }, 2600 + people.length * 180 + 150);
     }
@@ -234,6 +300,7 @@
                     tile.setAttribute('aria-label', 'Buka kartu ' + p.name);
                     tile.innerHTML = cardHtml(p, cfg.logo);
                     grid.appendChild(tile);
+                    watchCards(tile);
                 });
                 nextPage = res.next_page;
                 more.hidden = !nextPage;
@@ -272,6 +339,8 @@
                 label.setAttribute('data-search', [person.name].concat(person.rows.map(function (r) { return r.value; })).join(' ').toLowerCase());
             } catch (err) { /* biarkan tampilan cadangan (nama saja) */ }
         });
+
+        watchCards(grid);
 
         var form = grid.closest('form');
         if (!form) { return; }
@@ -330,7 +399,13 @@
         }
         var dir = document.getElementById('pcDirectory');
         if (dir && cfg.searchUrl) { initDirectory(dir); }
+
+        watchCards(document);   // kartu yang sudah ada di halaman (mis. pratinjau profil)
+        if (document.fonts) {
+            if (document.fonts.ready) { document.fonts.ready.then(refitAll); }
+            if (document.fonts.addEventListener) { document.fonts.addEventListener('loadingdone', refitAll); }
+        }
     });
 
-    window.PeopleCard = { FIELDS: FIELDS, esc: esc, fmtDate: fmtDate, initialsOf: initialsOf, rowsHtml: rowsHtml, cardHtml: cardHtml, open: openCard };
+    window.PeopleCard = { FIELDS: FIELDS, esc: esc, fmtDate: fmtDate, initialsOf: initialsOf, rowsHtml: rowsHtml, cardHtml: cardHtml, open: openCard, fit: queueFit, watch: watchCards };
 })();

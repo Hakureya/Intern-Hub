@@ -75,6 +75,12 @@ Route::group(['middleware' => ['auth', 'Role'], 'roles' => ['admin', 'mentor']],
     Route::get('/final-report', '\App\Http\Controllers\FinalReportController@index')->name('final-report.index'); //laporan akhir
     Route::get('/final-report/export/{month}', '\App\Http\Controllers\FinalReportController@exportMonthZip')->name('final-report.export');
 
+    // kategori tugas harian per divisi (mentor: divisinya; admin: semua)
+    Route::get('/work-categories', [\App\Http\Controllers\WorkCategoryController::class, 'index'])->name('work-categories.index');
+    Route::post('/work-categories', [\App\Http\Controllers\WorkCategoryController::class, 'store'])->name('work-categories.store');
+    Route::put('/work-categories/{category}', [\App\Http\Controllers\WorkCategoryController::class, 'update'])->where('category', '[0-9]+')->name('work-categories.update');
+    Route::delete('/work-categories/{category}', [\App\Http\Controllers\WorkCategoryController::class, 'destroy'])->where('category', '[0-9]+')->name('work-categories.destroy');
+
     // log pekerjaan (mentor hanya divisinya)
     Route::get('/work-logs', [\App\Http\Controllers\WorkTaskController::class, 'index'])->name('work-logs.index');
     Route::get('/work-logs/create', [\App\Http\Controllers\WorkTaskController::class, 'create'])->name('work-logs.create');
@@ -170,6 +176,8 @@ Route::group(['middleware' => ['auth', 'viewer.guard']], function () {
     Route::delete('/user/work-logs/{task}/references/{reference}', [\App\Http\Controllers\UserWorkTaskController::class, 'destroyReference'])->where(['task' => '[0-9]+', 'reference' => '[0-9]+'])->name('user.work-logs.references.destroy');
     Route::post('/user/work-logs/{task}/cancel', [\App\Http\Controllers\UserWorkTaskController::class, 'cancel'])->where('task', '[0-9]+')->name('user.work-logs.cancel');
     Route::post('/user/work-logs/{task}/withdraw', [\App\Http\Controllers\UserWorkTaskController::class, 'withdraw'])->where('task', '[0-9]+')->name('user.work-logs.withdraw');
+    Route::post('/user/work-logs/{task}/partners', [\App\Http\Controllers\UserWorkTaskController::class, 'invite'])->where('task', '[0-9]+')->name('user.work-logs.partners.store');
+    Route::delete('/user/work-logs/{task}/partners/{partnerRequest}', [\App\Http\Controllers\UserWorkTaskController::class, 'cancelInvite'])->where(['task' => '[0-9]+', 'partnerRequest' => '[0-9]+'])->name('user.work-logs.partners.destroy');
     Route::post('/user/work-logs/{task}/submit', [\App\Http\Controllers\UserWorkTaskController::class, 'submit'])->where('task', '[0-9]+')->name('user.work-logs.submit');
 
     // file lampiran & bukti (akses dicek di controller)
@@ -178,6 +186,8 @@ Route::group(['middleware' => ['auth', 'viewer.guard']], function () {
     Route::get('/work-logs/{task}/chat', [\App\Http\Controllers\WorkTaskChatController::class, 'index'])->where('task', '[0-9]+')->name('work-logs.chat.index');
     Route::post('/work-logs/{task}/chat', [\App\Http\Controllers\WorkTaskChatController::class, 'store'])->where('task', '[0-9]+')->middleware('throttle:40,1')->name('work-logs.chat.store');
     Route::patch('/work-logs/{task}/chat/{message}', [\App\Http\Controllers\WorkTaskChatController::class, 'update'])->where(['task' => '[0-9]+', 'message' => '[0-9]+'])->name('work-logs.chat.update');
+    Route::post('/work-logs/{task}/progress', [\App\Http\Controllers\WorkTaskProgressController::class, 'store'])->where('task', '[0-9]+')->name('work-logs.progress.store');
+    Route::delete('/work-logs/{task}/progress/{progress}', [\App\Http\Controllers\WorkTaskProgressController::class, 'destroy'])->where(['task' => '[0-9]+', 'progress' => '[0-9]+'])->name('work-logs.progress.destroy');
     Route::get('/work-logs/{task}/history', [\App\Http\Controllers\WorkTaskChatController::class, 'history'])->where('task', '[0-9]+')->name('work-logs.history');
     Route::get('/work-logs/chat-file/{file}', [\App\Http\Controllers\WorkTaskChatController::class, 'file'])->where('file', '[0-9]+')->name('work-logs.chat.file');
     Route::get('/work-logs/attachment/{attachment}', [\App\Http\Controllers\WorkTaskFileController::class, 'attachment'])->where('attachment', '[0-9]+')->name('work-logs.file.attachment');

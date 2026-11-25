@@ -1,7 +1,7 @@
 @extends('layouts.master')
 
 @section('css')
-    <link href="{{ URL::asset('css/work-log.css') }}?v=16" rel="stylesheet" type="text/css" />
+    <link href="{{ URL::asset('css/work-log.css') }}?v=19" rel="stylesheet" type="text/css" />
 @endsection
 
 @section('breadcrumb')
@@ -27,9 +27,14 @@
                 </p>
             </div>
             <div class="wl-head-actions">
-                <a href="{{ route('work-logs.create') }}" class="wl-btn wl-btn--primary">
-                    <i class="mdi mdi-plus"></i> Tambah tugas
-                </a>
+                @if ($type === 'daily')
+                    <button type="button" class="wl-btn" data-wl-open="#wl-cat-modal"><i class="mdi mdi-tag-multiple-outline"></i> Atur kategori</button>
+                    <a href="{{ route('work-logs.create', ['type' => 'daily']) }}" class="wl-btn wl-btn--primary"><i class="mdi mdi-plus"></i> Tambah tugas harian</a>
+                @else
+                    <a href="{{ route('work-logs.create') }}" class="wl-btn wl-btn--primary">
+                        <i class="mdi mdi-plus"></i> Tambah tugas
+                    </a>
+                @endif
             </div>
         </div>
 
@@ -147,6 +152,7 @@
                                 <span class="wl-badge wl-badge--info">{{ $task->isDaily() ? 'Harian' : 'Dicatat peserta' }}</span>
                             @endif
                         </div>
+                        @include('includes.work-target-bar', ['task' => $task])
                     </div>
                     <div class="wl-row-status">
                         @if ($row['counts']['menunggu'])
@@ -173,8 +179,106 @@
             @endforelse
         </div>
     </div>
+
+    @if ($type === 'daily')
+    {{-- Atur kategori tugas harian: mentor = divisinya, admin/super admin = semua divisi. --}}
+    <div class="wl-modal wl" id="wl-cat-modal">
+        <div class="wl-modal-box" style="width: min(520px, 100%);">
+            <div class="wl-modal-head">
+                <h5>Kategori tugas harian</h5>
+                <button type="button" class="wl-modal-x" data-wl-close aria-label="Tutup">&times;</button>
+            </div>
+            <div class="wl-modal-body">
+                @unless ($isMentor)
+                    <div class="wl-field">
+                        <label class="wl-label" for="wl-cat-division">Divisi</label>
+                        <select id="wl-cat-division" class="wl-select" data-cat-division></select>
+                    </div>
+                @else
+                    <div class="wl-hint" style="margin-bottom: 8px;">Divisi {{ optional($viewer->division)->name }}</div>
+                @endunless
+                <div data-cat-list></div>
+                <div style="display: flex; gap: 8px; margin-top: 12px;">
+                    <input type="text" class="wl-input" maxlength="40" placeholder="Nama kategori baru" data-cat-new>
+                    <button type="button" class="wl-btn wl-btn--primary" data-cat-add>Tambah</button>
+                </div>
+                <div class="wl-error" data-cat-err hidden></div>
+                <div class="wl-hint" style="margin-top: 10px;">Mengubah nama kategori ikut mengganti tugas lama di divisi ini. Menghapus kategori tidak mengubah tugas lama.</div>
+            </div>
+        </div>
+    </div>
+    @endif
 @endsection
 
 @section('script')
     <script src="{{ URL::asset('js/work-log.js') }}?v=11"></script>
+
+    @if ($type === 'daily')
+    <script>
+        (function () {
+            var modal = document.getElementById('wl-cat-modal');
+            if (!modal) { return; }
+            var listEl = modal.querySelector('[data-cat-list]'), errEl = modal.querySelector('[data-cat-err]'),
+                selEl = modal.querySelector('[data-cat-division]'), inEl = modal.querySelector('[data-cat-new]'),
+                token = '{{ csrf_token() }}', base = '{{ url('/work-categories') }}', current = null, loaded = false;
+
+            function api(method, url, body) {
+                return fetch(url, { method: method, credentials: 'same-origin',
+                    headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: body ? JSON.stringify(body) : undefined
+                }).then(function (r) {
+                    return r.json().catch(function () { return {}; }).then(function (j) {
+                        if (!r.ok) {
+                            var first = j.errors ? Object.keys(j.errors).map(function (k) { return j.errors[k][0]; })[0] : null;
+                            throw new Error(first || j.message || 'Terjadi kesalahan.');
+                        }
+                        return j;
+                    });
+                });
+            }
+            function fail(e) { errEl.textContent = e.message; errEl.hidden = false; }
+            function btn(text, cls, fn) {
+                var b = document.createElement('button'); b.type = 'button'; b.textContent = text; if (cls) { b.className = cls; } b.addEventListener('click', fn); return b;
+            }
+            function render(d) {
+                current = d.division_id; errEl.hidden = true;
+                if (selEl) {
+                    if (!selEl.options.length) {
+                        d.divisions.forEach(function (x) { var o = document.createElement('option'); o.value = x.id; o.textContent = x.name; selEl.appendChild(o); });
+                    }
+                    selEl.value = d.division_id;
+                }
+                listEl.innerHTML = '';
+                if (!d.categories.length) { listEl.innerHTML = '<div class="wl-hint">Belum ada kategori.</div>'; }
+                d.categories.forEach(function (c) {
+                    var row = document.createElement('div'); row.className = 'wl-cat-row';
+                    var name = document.createElement('span'); name.textContent = c.name;
+                    var uses = document.createElement('small'); uses.textContent = c.uses + ' tugas';
+                    row.appendChild(name); row.appendChild(uses);
+                    row.appendChild(btn('Ubah', '', function () {
+                        var v = window.prompt('Nama kategori', c.name);
+                        if (v === null || !v.trim() || v.trim() === c.name) { return; }
+                        api('PUT', base + '/' + c.id, { name: v.trim() }).then(render).catch(fail);
+                    }));
+                    row.appendChild(btn('Hapus', 'is-del', function () {
+                        if (!window.confirm('Hapus kategori "' + c.name + '"? Tugas lama tetap menyimpan namanya.')) { return; }
+                        api('DELETE', base + '/' + c.id).then(render).catch(fail);
+                    }));
+                    listEl.appendChild(row);
+                });
+            }
+            function load(id) { api('GET', base + (id ? '?division_id=' + id : '')).then(render).catch(fail); }
+
+            document.querySelectorAll('[data-wl-open="#wl-cat-modal"]').forEach(function (b) {
+                b.addEventListener('click', function () { if (!loaded) { loaded = true; load(); } });
+            });
+            if (selEl) { selEl.addEventListener('change', function () { load(selEl.value); }); }
+            modal.querySelector('[data-cat-add]').addEventListener('click', function () {
+                var v = inEl.value.trim(); if (!v) { return; }
+                api('POST', base, { division_id: current, name: v }).then(function (d) { inEl.value = ''; render(d); }).catch(fail);
+            });
+            inEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); modal.querySelector('[data-cat-add]').click(); } });
+        })();
+    </script>
+    @endif
 @endsection

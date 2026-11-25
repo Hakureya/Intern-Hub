@@ -496,7 +496,14 @@ class UserAttendanceController extends Controller
         $leave->type = 1;
         $leave->save();
 
-        flash()->success('Berhasil', 'Jam pulang berhasil dicatat.');
+        // Tidak memakai dialog flash: halaman absensi memutar animasi perayaan jam pulang.
+        session()->flash('clockout_celebration', [
+            'time' => date('H:i', strtotime($leave->leave_time)),
+            'message' => $leave->status === 1
+                ? 'Kerja bagus hari ini! Sampai jumpa besok.'
+                : 'Jam pulang tercatat lebih awal. Hati-hati di jalan.',
+        ]);
+
         return redirect()->route('user.attendance.index');
     }
 }

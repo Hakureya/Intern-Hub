@@ -36,8 +36,8 @@
                     @endif
                     @if ($task->deadline)<dt>Tenggat</dt><dd>{{ $task->deadline->locale('id')->translatedFormat('l, d F Y') }}</dd>@endif
                     @if ($task->categoryLabel())<dt>Kategori</dt><dd>{{ $task->categoryLabel() }}</dd>@endif
-                    @if ($task->quantity_unit)<dt>Satuan output</dt><dd>{{ $task->quantity_unit }}</dd>@endif
-                    @if (! $task->has_children && $task->quantity !== null)<dt>Jumlah output</dt><dd>{{ number_format($task->quantity, 0, ',', '.') }} {{ $task->quantity_unit }}</dd>@endif
+                    @if ($task->quantity_unit)<dt>Jenis satuan</dt><dd>{{ $task->quantity_unit }}</dd>@endif
+                    @if (! $task->has_children && $task->quantity !== null)<dt>Total selesai</dt><dd>{{ number_format($task->quantity, 0, ',', '.') }} {{ $task->quantity_unit }}</dd>@endif
                     @if (! $task->has_children && $task->workStatusLabel())
                         <dt>Status pengerjaan</dt>
                         <dd><span class="wl-badge wl-badge--{{ $task->work_status }}">{{ $task->workStatusLabel() }}</span></dd>

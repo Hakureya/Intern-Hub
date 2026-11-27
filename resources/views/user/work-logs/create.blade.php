@@ -125,7 +125,7 @@
                             <h3 class="wl-section-title" style="margin-bottom: 4px;">Dikerjakan bersama <small style="font-weight: 500; color: var(--cs-soft);">(opsional)</small></h3>
                             <div class="wl-sub">
                                 Pilih teman satu divisi. Mereka akan menerima permintaan untuk mengonfirmasi.
-                                @if ($type === 'daily') Setelah menerima, tiap teman menambahkan turunannya sendiri (boleh untuk tanggal sebelum bergabung) dan total output dijumlahkan. @endif
+                                @if ($type === 'daily') Setelah menerima, tiap teman menambahkan turunannya sendiri (boleh untuk tanggal sebelum bergabung) dan Total selesai dijumlahkan. @endif
                             </div>
                         </div>
                         <span class="wl-pill-count" data-wl-count>0 dipilih</span>

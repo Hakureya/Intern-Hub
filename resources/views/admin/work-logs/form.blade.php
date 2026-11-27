@@ -142,7 +142,7 @@
                     @endunless
                 </div>
 
-                @if ($isSelf)
+                @if ($isSelf && ! $task->has_children)
                     <div class="wl-hint" style="margin-top: 6px;">Peserta pada tugas ini diatur sendiri oleh peserta (pembuat dan rekan kolaborasinya), sehingga tidak dapat diubah dari sini.</div>
                 @else
                 <hr class="wl-divider">
@@ -150,7 +150,7 @@
                     <div class="wl-section-head">
                         <div>
                             <h3 class="wl-section-title" style="margin-bottom: 4px;">Pilih peserta magang <span class="req" style="color: var(--cs-rose)">*</span></h3>
-                            <div class="wl-sub">{{ $isEdit ? 'Centang untuk menambah peserta, hapus centang untuk mengeluarkan peserta dari tugas ini.' : 'Klik kartu untuk memilih peserta. Pekerjaan akan dibuat untuk setiap peserta terpilih.' }}</div>
+                            <div class="wl-sub">{{ $isEdit ? 'Centang untuk menambah peserta, hapus centang untuk mengeluarkan peserta dari tugas ini.' . ($isSelf ? ' Catatan progres (turunan) peserta yang dikeluarkan tetap tersimpan.' : '') : 'Klik kartu untuk memilih peserta. Pekerjaan akan dibuat untuk setiap peserta terpilih.' }}</div>
                         </div>
                         <span class="wl-pill-count" data-wl-count>0 dipilih</span>
                     </div>

@@ -582,6 +582,7 @@
                                 @foreach ($users as $user)
                                     @php
                                         $periodMonths = null;
+                                        $periodText = null;
                                         if ($user->internship_start_date && $user->internship_end_date) {
                                             $s = \Carbon\Carbon::parse($user->internship_start_date)->startOfDay();
                                             $e = \Carbon\Carbon::parse($user->internship_end_date)->startOfDay();
@@ -589,6 +590,7 @@
                                                 ($e->year - $s->year) * 12 + ($e->month - $s->month) + 1,
                                                 1,
                                             );
+                                            $periodText = $s->format('d/m/Y') . ' - ' . $e->format('d/m/Y') . ' (' . $periodMonths . ' bulan)';
                                         }
                                         $divisionName = optional($user->division)->name;
                                         $isActive = $isActiveIntern($user);
@@ -596,7 +598,7 @@
                                     <tr>
                                         <td class="pm-name">{{ $user->name }}</td>
                                         <td>{!! $user->major ? e($user->major) : '<span class="pm-empty">-</span>' !!}</td>
-                                        <td data-order="{{ $periodMonths ?? 0 }}">
+                                        <td data-order="{{ $periodMonths ?? 0 }}" data-export="{{ $periodText ?? '-' }}">
                                             @if ($periodMonths)
                                                 {{ $periodMonths }} bulan
                                             @else
@@ -632,12 +634,44 @@
 @section('script')
     <script>
         $(function() {
-            // Kolom Aksi (indeks 5) tidak ikut diekspor
+            var JUDUL = 'Daftar Peserta Magang';
+            var WEIGHTS = [30, 24, 30, 24, 12]; // lebar relatif kolom 0-4
+            var hidden = {}; // kolom yang disembunyikan lewat menu "Tampilkan kolom"
+            var table;
+
+            function pad(n) { return (n < 10 ? '0' : '') + n; }
+            function stamp() {
+                var d = new Date();
+                return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' +
+                    pad(d.getHours()) + pad(d.getMinutes());
+            }
+            function fileName() { return 'peserta-magang-' + stamp(); }
+            function exportedCols() {
+                return [0, 1, 2, 3, 4].filter(function(i) { return !hidden[i]; });
+            }
+            function filterInfo() {
+                var status = $('#pm-filter .is-on').clone().children().remove().end().text().trim() || 'Semua';
+                var q = $.trim($('#pm-search').val());
+                var n = table.rows({ search: 'applied' }).count();
+                return 'Status: ' + status + (q ? ' | Pencarian: "' + q + '"' : '') +
+                    ' | Total: ' + n + ' peserta';
+            }
+
+            // Kolom Aksi (indeks 5) tidak diekspor; kolom yang disembunyikan pengguna ikut disembunyikan
             var exportCols = {
-                columns: [0, 1, 2, 3, 4]
+                columns: function(idx) { return idx < 5 && !hidden[idx]; },
+                format: {
+                    body: function(data, row, col) {
+                        var node = table.cell(row, col).node();
+                        var t = node ? node.getAttribute('data-export') : null;
+                        if (t !== null) return t;
+                        t = $.trim(String(data).replace(/<[^>]*>/g, ''));
+                        return t === '' ? '-' : t;
+                    }
+                }
             };
 
-            var table = $('#datatable-users').DataTable({
+            table = $('#datatable-users').DataTable({
                 lengthChange: false,
                 pageLength: 10,
                 order: [
@@ -660,63 +694,136 @@
                     }
                 },
                 buttons: [{
-                        extend: 'copy',
+                        extend: 'copyHtml5',
+                        text: 'Salin',
+                        title: JUDUL,
+                        copyTitle: 'Tersalin',
+                        copySuccess: {
+                            _: '%d baris tersalin ke clipboard',
+                            1: '1 baris tersalin ke clipboard'
+                        },
                         exportOptions: exportCols
                     },
                     {
                         extend: 'excelHtml5',
                         text: 'Excel',
+                        title: null,
+                        sheetName: 'Peserta Magang',
+                        filename: fileName,
                         exportOptions: exportCols,
                         customize: function(xlsx) {
                             var sheet = xlsx.xl.worksheets['sheet1.xml'];
                             var styles = xlsx.xl['styles.xml'];
 
-                            // Add a border style
-                            var borders = $('borders', styles);
-                            var borderCount = borders.attr('count');
-                            borders.append(
-                                '<border>' +
-                                '<left style="thin"><color auto="1"/></left>' +
-                                '<right style="thin"><color auto="1"/></right>' +
-                                '<top style="thin"><color auto="1"/></top>' +
-                                '<bottom style="thin"><color auto="1"/></bottom>' +
-                                '<diagonal/>' +
-                                '</border>'
-                            );
-                            borders.attr('count', parseInt(borderCount, 10) + 1);
+                            function add(tag, xml) {
+                                var node = $(tag, styles);
+                                var n = parseInt(node.attr('count'), 10);
+                                node.append(xml).attr('count', n + 1);
+                                return n;
+                            }
 
-                            // Add a cellXfs style that uses the new border
-                            var cellXfs = $('cellXfs', styles);
-                            var xfCount = cellXfs.attr('count');
-                            cellXfs.append(
-                                '<xf xfId="0" applyBorder="1" borderId="' + borderCount + '"/>'
-                            );
-                            cellXfs.attr('count', parseInt(xfCount, 10) + 1);
-                            var borderStyleIndex = xfCount;
+                            var fontB = add('fonts', '<font><b/><sz val="11"/><name val="Calibri"/></font>');
+                            var fillH = add('fills',
+                                '<fill><patternFill patternType="solid"><fgColor rgb="FFE9EAF7"/>' +
+                                '<bgColor indexed="64"/></patternFill></fill>');
+                            var border = add('borders',
+                                '<border><left style="thin"><color rgb="FFBFC5CC"/></left>' +
+                                '<right style="thin"><color rgb="FFBFC5CC"/></right>' +
+                                '<top style="thin"><color rgb="FFBFC5CC"/></top>' +
+                                '<bottom style="thin"><color rgb="FFBFC5CC"/></bottom><diagonal/></border>');
+                            var sBody = add('cellXfs',
+                                '<xf numFmtId="0" fontId="0" fillId="0" xfId="0" borderId="' + border +
+                                '" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>');
+                            var sHead = add('cellXfs',
+                                '<xf numFmtId="0" fontId="' + fontB + '" fillId="' + fillH + '" xfId="0" borderId="' +
+                                border + '" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">' +
+                                '<alignment horizontal="left" vertical="center"/></xf>');
 
-                            // Apply border style to all cells
-                            $('row c', sheet).attr('s', borderStyleIndex);
+                            // Header tebal + berwarna, isi berbingkai
+                            $('row:first c', sheet).attr('s', sHead);
+                            $('row:gt(0) c', sheet).attr('s', sBody);
 
-                            // Column widths (5 kolom yang diekspor)
+                            // Lebar kolom mengikuti kolom yang benar-benar diekspor
                             var cols = $('cols', sheet);
                             if (cols.length === 0) {
                                 cols = $('<cols/>').prependTo(sheet);
                             } else {
                                 cols.empty();
                             }
-
-                            var widths = [30, 24, 22, 34, 14];
-                            for (var i = 0; i < widths.length; i++) {
-                                cols.append(
-                                    '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' +
-                                    widths[i] + '" customWidth="1"/>'
-                                );
-                            }
+                            var widths = {0: 30, 1: 24, 2: 34, 3: 34, 4: 14};
+                            exportedCols().forEach(function(c, pos) {
+                                cols.append('<col min="' + (pos + 1) + '" max="' + (pos + 1) +
+                                    '" width="' + widths[c] + '" customWidth="1"/>');
+                            });
                         }
                     },
                     {
-                        extend: 'pdf',
-                        exportOptions: exportCols
+                        extend: 'pdfHtml5',
+                        text: 'PDF',
+                        orientation: 'landscape',
+                        pageSize: 'A4',
+                        title: JUDUL,
+                        filename: fileName,
+                        messageTop: filterInfo,
+                        exportOptions: exportCols,
+                        customize: function(doc) {
+                            var M = 40;
+                            doc.pageMargins = [M, 36, M, 40];
+                            doc.defaultStyle.fontSize = 9;
+                            doc.styles.title = { fontSize: 16, bold: true, alignment: 'left', margin: [0, 0, 0, 4] };
+                            doc.styles.message = { fontSize: 9, color: '#6b7280', margin: [0, 0, 0, 10] };
+                            doc.styles.tableHeader = {
+                                bold: true, fontSize: 9, color: '#1f2430',
+                                fillColor: '#e9eaf7', alignment: 'left'
+                            };
+                            doc.styles.tableBodyOdd = { fillColor: '#ffffff' };
+                            doc.styles.tableBodyEven = { fillColor: '#f7f9fb' };
+
+                            var tbl = doc.content.filter(function(c) { return c.table; })[0];
+                            var body = tbl.table.body;
+
+                            // Kolom nomor di depan
+                            body.forEach(function(row, r) {
+                                row.unshift(r === 0 ?
+                                    { text: 'No', style: 'tableHeader', alignment: 'center' } :
+                                    { text: String(r), alignment: 'center', style: r % 2 ? 'tableBodyOdd' : 'tableBodyEven' });
+                            });
+
+                            // Lebar tetap (pt) sesuai ruang halaman A4 landscape
+                            var noW = 28;
+                            var avail = 841.89 - 2 * M - noW;
+                            var ids = exportedCols();
+                            var total = ids.reduce(function(a, c) { return a + WEIGHTS[c]; }, 0);
+                            tbl.table.widths = [noW].concat(ids.map(function(c) {
+                                return Math.floor(avail * WEIGHTS[c] / total);
+                            }));
+                            tbl.table.headerRows = 1;
+                            tbl.layout = {
+                                hLineWidth: function() { return 0.5; },
+                                vLineWidth: function() { return 0.5; },
+                                hLineColor: function() { return '#d5dae0'; },
+                                vLineColor: function() { return '#d5dae0'; },
+                                paddingTop: function() { return 4; },
+                                paddingBottom: function() { return 4; },
+                                paddingLeft: function() { return 6; },
+                                paddingRight: function() { return 6; }
+                            };
+
+                            var printed = new Date();
+                            doc.footer = function(page, pages) {
+                                return {
+                                    margin: [M, 0, M, 0],
+                                    fontSize: 8,
+                                    color: '#6b7280',
+                                    columns: [
+                                        { text: 'Dicetak ' + pad(printed.getDate()) + '/' + pad(printed.getMonth() + 1) +
+                                            '/' + printed.getFullYear() + ' ' + pad(printed.getHours()) + ':' +
+                                            pad(printed.getMinutes()), alignment: 'left' },
+                                        { text: page + ' / ' + pages, alignment: 'right' }
+                                    ]
+                                };
+                            };
+                        }
                     }
                 ]
             });
@@ -739,6 +846,7 @@
                 e.stopPropagation();
             });
             $colvis.on('change', 'input', function() {
+                hidden[$(this).data('col')] = !this.checked;
                 table.column($(this).data('col')).visible(this.checked);
             });
 

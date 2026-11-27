@@ -10,8 +10,10 @@ use App\Models\WorkTaskAttachment;
 use App\Models\WorkTaskPartnerRequest;
 use App\Models\WorkTaskReference;
 use App\Support\TaskHistory;
+use App\Support\WorkLogReport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /** Log pekerjaan sisi peserta magang. */
 class UserWorkTaskController extends Controller
@@ -109,8 +111,88 @@ class UserWorkTaskController extends Controller
             'received' => $received,
             'sent' => $sent,
             'history' => $history,
+            'exportCategories' => $this->exportCategories($me),
             'pendingCount' => $received->count(),
         ]);
+    }
+
+    /** Pilihan kategori untuk export: hanya kategori tugas harian yang pernah dikerjakan (sudah selesai) oleh peserta. */
+    private function exportCategories(User $me): array
+    {
+        return WorkLogReport::usedCategories($me);
+    }
+
+    /** Teks periode magang peserta, mis. "01/09/2026 – 30/11/2026"; null bila belum diisi. */
+    private function internshipPeriod(User $me): ?string
+    {
+        if (! $me->internship_start_date && ! $me->internship_end_date) {
+            return null;
+        }
+        $fmt = function ($d) {
+            return $d ? \Carbon\Carbon::parse($d)->format('d/m/Y') : '?';
+        };
+
+        return $fmt($me->internship_start_date) . ' – ' . $fmt($me->internship_end_date);
+    }
+
+    /**
+     * Export hasil pekerjaan ke dokumen Word.
+     * Hanya pekerjaan berstatus sudah selesai; memuat seluruh data; periode hanya format pengelompokan tanggal pada dokumen.
+     */
+    public function export(Request $request)
+    {
+        $me = auth()->user();
+
+        $data = $request->validate([
+            'type' => 'required|in:project,daily,both',
+            'period' => 'required|in:day,week,month',
+            'categories' => 'required_unless:type,project|nullable|array',
+            'categories.*' => 'string|max:100',
+        ], [
+            'type.required' => 'Pilih jenis tugas yang ingin diexport.',
+            'period.required' => 'Pilih periode export.',
+            'categories.required' => 'Pilih minimal satu kategori.',
+        ]);
+
+        $types = $data['type'] === 'both' ? [WorkTask::TYPE_PROJECT, WorkTask::TYPE_DAILY] : [$data['type']];
+        $categories = array_values(array_unique($data['categories'] ?? []));
+
+        $items = WorkLogReport::collect($me, $types, $categories);
+
+        if (! $items) {
+            return back()->withInput()->withErrors([
+                'export' => 'Tidak ada pekerjaan berstatus selesai pada jenis tugas dan kategori yang dipilih.',
+            ]);
+        }
+
+        $meta = [
+            'name' => $me->name,
+            'institution' => $me->institution,
+            'division' => optional($me->division)->name,
+            'mentor' => optional($me->mentor)->name,
+            'kind' => WorkLogReport::PERIODS[$data['period']],
+            'period' => $data['period'],
+            'typeLabel' => WorkLogReport::TYPES[$data['type']],
+            'types' => $types,
+            'internship' => $this->internshipPeriod($me),
+            'printedAt' => now()->locale('id')->translatedFormat('d F Y, H:i'),
+        ];
+
+        $tmp = tempnam(sys_get_temp_dir(), 'wlx');
+        try {
+            WorkLogReport::render($meta, $items, $tmp);
+        } catch (\Throwable $e) {
+            @unlink($tmp);
+            report($e);
+
+            return back()->withInput()->withErrors(['export' => 'Dokumen gagal dibuat. Pastikan ekstensi zip PHP aktif di server.']);
+        }
+
+        $filename = 'Log_Pekerjaan_' . Str::slug($me->name, '_') . '_' . $data['period'] . '.docx';
+
+        return response()->download($tmp, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ])->deleteFileAfterSend(true);
     }
 
     public function create(Request $request)
@@ -162,7 +244,7 @@ class UserWorkTaskController extends Controller
     /**
      * Aturan isian tugas harian.
      * Dengan turunan: satuan wajib, target total opsional (tanggal & jumlah diisi per turunan).
-     * Pencatatan: tanggal mulai, tanggal selesai, jumlah output (+ status pengerjaan).
+     * Pencatatan: tanggal mulai, tanggal selesai, Total selesai (+ status pengerjaan).
      */
     private function dailyRules($user, $keepCategory = null, bool $children = false, $minDeadline = null): array
     {
@@ -179,7 +261,6 @@ class UserWorkTaskController extends Controller
         } else {
             $rules += $this->dateRules($user);
             $rules['quantity'] = 'nullable|integer|min:0|max:1000000';
-            $rules['work_status'] = 'required|in:' . implode(',', array_keys(WorkTask::WORK_STATUSES));
         }
 
         return $rules;
@@ -189,15 +270,13 @@ class UserWorkTaskController extends Controller
     {
         return array_merge($this->dateMessages(), [
             'category.in' => 'Kategori tidak valid.',
-            'quantity.integer' => 'Jumlah output harus berupa angka bulat.',
-            'quantity.min' => 'Jumlah output tidak boleh negatif.',
-            'quantity_unit.required' => 'Satuan output wajib diisi untuk tugas dengan turunan.',
-            'quantity_unit.required_with' => 'Satuan output wajib diisi bila jumlah diisi.',
+            'quantity.integer' => 'Total selesai harus berupa angka bulat.',
+            'quantity.min' => 'Total selesai tidak boleh negatif.',
+            'quantity_unit.required' => 'Jenis satuan wajib diisi untuk tugas dengan turunan.',
+            'quantity_unit.required_with' => 'Jenis satuan wajib diisi bila jumlah diisi.',
             'target_quantity.min' => 'Target minimal 1.',
             'deadline.date' => 'Tenggat tidak valid.',
             'deadline.after_or_equal' => 'Tenggat tidak boleh sebelum tanggal mulai tugas.',
-            'work_status.required' => 'Status pengerjaan wajib dipilih.',
-            'work_status.in' => 'Status pengerjaan tidak valid.',
         ]);
     }
 
@@ -245,7 +324,7 @@ class UserWorkTaskController extends Controller
                 'target_quantity' => $children && ! empty($data['target_quantity']) ? (int) $data['target_quantity'] : null,
                 'quantity' => $hasQty ? (int) $data['quantity'] : null,
                 'quantity_unit' => $unit !== '' ? $unit : null,
-                'work_status' => $children ? null : $data['work_status'],
+                'work_status' => null,
                 'deadline' => $deadline,
                 'worked_on' => $start,
                 'start_date' => $start,
@@ -276,7 +355,7 @@ class UserWorkTaskController extends Controller
         });
 
         if ($children) {
-            flash()->success('Berhasil', 'Tugas dibuat. Tambahkan turunan (tanggal pengerjaan + jumlah output) di bawah.'
+            flash()->success('Berhasil', 'Tugas dibuat. Tambahkan turunan (tanggal pengerjaan + Total selesai) di bawah.'
                 . ($partnerIds ? ' Permintaan dikirim ke teman.' : ''));
 
             return redirect()->route('user.work-logs.show', $task);
@@ -527,7 +606,7 @@ class UserWorkTaskController extends Controller
                 $changes[] = TaskHistory::change('Kategori', $task->categoryLabel() ?: '-', ($data['category'] ?? '-'));
             }
             if ((string) $task->quantity_unit !== $unit) {
-                $changes[] = TaskHistory::change('Satuan output', $task->quantity_unit ?: '-', $unit !== '' ? $unit : '-');
+                $changes[] = TaskHistory::change('Jenis satuan', $task->quantity_unit ?: '-', $unit !== '' ? $unit : '-');
             }
             if (optional($task->deadline)->toDateString() !== $deadline) {
                 $changes[] = TaskHistory::change('Tenggat', $task->deadline ? $fmt($task->deadline) : '-', $deadline ? $fmt($deadline) : '-');
@@ -556,15 +635,12 @@ class UserWorkTaskController extends Controller
                 $hasQty = isset($data['quantity']) && $data['quantity'] !== null;
                 $newQty = $hasQty ? (int) $data['quantity'] : null;
                 if ($task->quantity !== $newQty) {
-                    $changes[] = TaskHistory::change('Jumlah output', $task->quantity !== null ? (string) $task->quantity : '-', $hasQty ? (string) $newQty : '-');
-                }
-                if ((string) $task->work_status !== $data['work_status']) {
-                    $changes[] = TaskHistory::change('Status pengerjaan', $task->workStatusLabel() ?: '-', WorkTask::WORK_STATUSES[$data['work_status']]);
+                    $changes[] = TaskHistory::change('Total selesai', $task->quantity !== null ? (string) $task->quantity : '-', $hasQty ? (string) $newQty : '-');
                 }
 
                 $dateUpdate += [
                     'worked_on' => $newStart, 'start_date' => $newStart, 'end_date' => $newEnd,
-                    'quantity' => $newQty, 'work_status' => $data['work_status'],
+                    'quantity' => $newQty,
                 ];
             }
         } elseif (isset($data['start_date'], $data['end_date'])) {

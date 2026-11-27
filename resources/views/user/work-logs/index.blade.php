@@ -2,7 +2,7 @@
 
 @section('css')
     <link href="{{ URL::asset('css/cerah-portal.css') }}?v=2" rel="stylesheet" type="text/css" />
-    <link href="{{ URL::asset('css/work-log.css') }}?v=19" rel="stylesheet" type="text/css" />
+    <link href="{{ URL::asset('css/work-log.css') }}?v=21" rel="stylesheet" type="text/css" />
 @endsection
 
 @section('content')
@@ -10,12 +10,13 @@
 
 <div class="home-wrap">
     <div class="home-shell wl">
-        <div class="wl-head">
+        <div class="wl-head wl-head--batik">
             <div>
                 <h2 class="wl-title">Log Pekerjaan</h2>
                 <p class="wl-sub">Tugas dari mentor dan pekerjaan yang kamu catat sendiri.</p>
             </div>
             <div class="wl-head-actions">
+                <button type="button" class="wl-btn" data-wl-open="#wl-export"><i class="mdi mdi-file-word-outline"></i> Export dokumen</button>
                 <button type="button" class="wl-btn" data-wl-open="#wl-requests">
                     <i class="mdi mdi-account-clock-outline"></i> Daftar permintaan
                     @if ($pendingCount) <span class="wl-count">{{ $pendingCount }}</span> @endif
@@ -121,6 +122,73 @@
     </div>
 </div>
 
+{{-- Popup export hasil pekerjaan ke dokumen Word --}}
+@php($exportOpen = $errors->hasAny(['export', 'type', 'period', 'categories']))
+@php($expType = old('type', 'both'))
+@php($expPeriod = old('period', 'month'))
+@php($expCats = old('categories', $exportCategories))
+<div class="wl-modal wl {{ $exportOpen ? 'is-open' : '' }}" id="wl-export">
+    <div class="wl-modal-box" style="width: min(560px, 100%);">
+        <div class="wl-modal-head">
+            <h5>Export hasil pekerjaan ke dokumen</h5>
+            <button type="button" class="wl-modal-x" data-wl-close aria-label="Tutup">&times;</button>
+        </div>
+        <form method="GET" action="{{ route('user.work-logs.export') }}" class="wl-modal-body" id="wl-export-form">
+            <div class="wl-sub" style="margin-bottom: 12px;">
+                Hanya pekerjaan yang sudah selesai (disetujui mentor) yang dimasukkan. Hasilnya berupa dokumen Word (.docx) yang bisa diunduh dan dicetak.
+            </div>
+
+            @foreach (['export', 'type', 'period', 'categories'] as $k)
+                @error($k) <div class="wl-error" style="margin-bottom: 8px;">{{ $message }}</div> @enderror
+            @endforeach
+
+            <div class="wl-field">
+                <label class="wl-label">Jenis tugas</label>
+                <div class="wl-radio-group">
+                    @foreach (\App\Support\WorkLogReport::TYPES as $val => $text)
+                        <label class="wl-radio"><input type="radio" name="type" value="{{ $val }}" {{ $expType === $val ? 'checked' : '' }}> {{ $text }}</label>
+                    @endforeach
+                </div>
+            </div>
+
+            <div class="wl-field">
+                <label class="wl-label">Format tanggal</label>
+                <div class="wl-radio-group">
+                    @foreach (\App\Support\WorkLogReport::PERIODS as $val => $text)
+                        <label class="wl-radio"><input type="radio" name="period" value="{{ $val }}" {{ $expPeriod === $val ? 'checked' : '' }}> {{ $text }}</label>
+                    @endforeach
+                </div>
+            </div>
+
+            <div class="wl-field" id="wl-exp-cats">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                    <label class="wl-label" style="margin: 0;">Kategori tugas harian yang dimasukkan</label>
+                    <span>
+                        <button type="button" class="wl-btn wl-btn--sm" data-exp-cats="all">Pilih semua</button>
+                        <button type="button" class="wl-btn wl-btn--sm" data-exp-cats="none">Kosongkan</button>
+                    </span>
+                </div>
+                <div style="display: grid; gap: 6px; margin-top: 8px; max-height: 220px; overflow-y: auto;">
+                    @forelse ($exportCategories as $cat)
+                        <label class="wl-radio" style="justify-content: flex-start;">
+                            <input type="checkbox" name="categories[]" value="{{ $cat }}" {{ in_array($cat, (array) $expCats, true) ? 'checked' : '' }}>
+                            {{ $cat === \App\Support\WorkLogReport::NO_CATEGORY ? 'Tanpa kategori' : $cat }}
+                        </label>
+                    @empty
+                        <div class="wl-hint">Belum ada kategori yang pernah dikerjakan.</div>
+                    @endforelse
+                </div>
+                <div class="wl-hint" style="margin-top: 6px;">Hanya kategori yang pernah diselesaikan</div>
+            </div>
+
+            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                <button type="button" class="wl-btn" data-wl-close>Batal</button>
+                <button type="submit" class="wl-btn wl-btn--primary"><i class="mdi mdi-download"></i> Export .docx</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 {{-- Popup daftar permintaan kerja bersama --}}
 <div class="wl-modal wl" id="wl-requests">
     <div class="wl-modal-box">
@@ -194,4 +262,23 @@
 
 @section('script')
     <script src="{{ URL::asset('js/work-log.js') }}?v=11"></script>
+    <script>
+        (function () {
+            var form = document.getElementById('wl-export-form');
+            if (!form) return;
+            function syncCats() {
+                var t = form.querySelector('input[name="type"]:checked');
+                var box = document.getElementById('wl-exp-cats');
+                if (box) box.style.display = (t && t.value === 'project') ? 'none' : '';
+            }
+            form.querySelectorAll('input[name="type"]').forEach(function (r) { r.addEventListener('change', syncCats); });
+            syncCats();
+            form.querySelectorAll('[data-exp-cats]').forEach(function (b) {
+                b.addEventListener('click', function () {
+                    var on = b.getAttribute('data-exp-cats') === 'all';
+                    form.querySelectorAll('input[name="categories[]"]').forEach(function (c) { c.checked = on; });
+                });
+            });
+        })();
+    </script>
 @endsection

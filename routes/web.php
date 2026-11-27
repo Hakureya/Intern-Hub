@@ -168,6 +168,7 @@ Route::group(['middleware' => ['auth', 'viewer.guard']], function () {
     Route::get('/user/work-logs', [\App\Http\Controllers\UserWorkTaskController::class, 'index'])->name('user.work-logs.index');
     Route::get('/user/work-logs/create', [\App\Http\Controllers\UserWorkTaskController::class, 'create'])->name('user.work-logs.create');
     Route::post('/user/work-logs', [\App\Http\Controllers\UserWorkTaskController::class, 'store'])->name('user.work-logs.store');
+    Route::get('/user/work-logs/export', [\App\Http\Controllers\UserWorkTaskController::class, 'export'])->name('user.work-logs.export');
     Route::post('/user/work-logs/requests/{partnerRequest}/respond', [\App\Http\Controllers\UserWorkTaskController::class, 'respond'])->where('partnerRequest', '[0-9]+')->name('user.work-logs.requests.respond');
     Route::get('/user/work-logs/{task}', [\App\Http\Controllers\UserWorkTaskController::class, 'show'])->where('task', '[0-9]+')->name('user.work-logs.show');
     Route::get('/user/work-logs/{task}/edit', [\App\Http\Controllers\UserWorkTaskController::class, 'edit'])->where('task', '[0-9]+')->name('user.work-logs.edit');

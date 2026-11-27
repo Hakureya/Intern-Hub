@@ -1,4 +1,4 @@
-{{-- Ringkasan tugas dengan turunan di daftar: bar progres bila ada target, selain itu total output. Param: $task (dengan progress_sum_quantity bila ada). --}}
+{{-- Ringkasan tugas dengan turunan di daftar: bar progres bila ada target, selain itu Total selesai. Param: $task (dengan progress_sum_quantity bila ada). --}}
 @if ($task->has_children)
     @if ($task->hasTarget())
         <?php $pct = $task->progressPercent(); $late = $pct < 100 && $task->isPastDeadline(); ?>

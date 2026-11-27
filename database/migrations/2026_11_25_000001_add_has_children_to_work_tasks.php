@@ -10,8 +10,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('work_tasks', function (Blueprint $table) {
-            // true = tugas harian dengan turunan (tanggal pengerjaan + jumlah output diisi per turunan);
-            // false = pencatatan (tanggal mulai, tanggal selesai, jumlah output diisi pada tugas itu sendiri).
+            // true = tugas harian dengan turunan (tanggal pengerjaan + Total selesai diisi per turunan);
+            // false = pencatatan (tanggal mulai, tanggal selesai, Total selesai diisi pada tugas itu sendiri).
             $table->boolean('has_children')->default(false);
         });
 

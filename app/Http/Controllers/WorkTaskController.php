@@ -7,6 +7,7 @@ use App\Models\Division;
 use App\Models\User;
 use App\Models\WorkCategory;
 use App\Support\TaskHistory;
+use Illuminate\Validation\ValidationException;
 use App\Models\WorkTask;
 use App\Models\WorkTaskAssignee;
 use App\Models\WorkTaskReference;
@@ -170,8 +171,8 @@ class WorkTaskController extends Controller
 
     /**
      * Tugas harian dari mentor/admin (sama seperti dari peserta, ditambah pemilihan peserta):
-     *  - dengan turunan : satu/lebih peserta; tanggal pengerjaan + jumlah output diisi per turunan di halaman detail.
-     *  - pencatatan     : atas nama satu peserta, dengan tanggal mulai, tanggal selesai, jumlah output (langsung selesai).
+     *  - dengan turunan : satu/lebih peserta; tanggal pengerjaan + Total selesai diisi per turunan di halaman detail.
+     *  - pencatatan     : atas nama satu peserta, dengan tanggal mulai, tanggal selesai, Total selesai (langsung selesai).
      */
     private function storeDaily(Request $request, User $viewer)
     {
@@ -197,13 +198,12 @@ class WorkTaskController extends Controller
                 'start_date' => 'required|date|before_or_equal:today',
                 'end_date' => 'required|date|after_or_equal:start_date|before_or_equal:today',
                 'quantity' => 'nullable|integer|min:0|max:1000000',
-                'work_status' => 'required|in:' . implode(',', array_keys(WorkTask::WORK_STATUSES)),
             ];
         }
         $data = $request->validate($rules, [
             'category.required' => 'Pilih kategori.',
-            'quantity_unit.required' => 'Satuan output wajib diisi untuk tugas dengan turunan.',
-            'quantity_unit.required_with' => 'Satuan output wajib diisi bila jumlah diisi.',
+            'quantity_unit.required' => 'Jenis satuan wajib diisi untuk tugas dengan turunan.',
+            'quantity_unit.required_with' => 'Jenis satuan wajib diisi bila jumlah diisi.',
             'target_quantity.min' => 'Target minimal 1.',
             'deadline.after_or_equal' => 'Tenggat tidak boleh sebelum tanggal mulai tugas.',
             'participants.required' => 'Pilih minimal satu peserta magang.',
@@ -214,7 +214,6 @@ class WorkTaskController extends Controller
             'end_date.required' => 'Tanggal selesai wajib diisi.',
             'end_date.after_or_equal' => 'Tanggal selesai tidak boleh sebelum tanggal mulai.',
             'end_date.before_or_equal' => 'Tanggal selesai tidak boleh melewati hari ini.',
-            'work_status.required' => 'Status pengerjaan wajib dipilih.',
         ]);
 
         $ids = array_values(array_unique(array_map('intval', $data['participants'])));
@@ -250,7 +249,7 @@ class WorkTaskController extends Controller
                 'target_quantity' => $children && ! empty($data['target_quantity']) ? (int) $data['target_quantity'] : null,
                 'quantity' => $hasQty ? (int) $data['quantity'] : null,
                 'quantity_unit' => $unit !== '' ? $unit : null,
-                'work_status' => $children ? null : $data['work_status'],
+                'work_status' => null,
                 'deadline' => $deadline,
                 'worked_on' => $start,
                 'start_date' => $start,
@@ -299,18 +298,21 @@ class WorkTaskController extends Controller
             $rules += [
                 'target_quantity' => 'nullable|integer|min:1|max:1000000',
                 'require_attachment' => 'required|in:0,1',
+                'participants' => 'required|array|min:1',
+                'participants.*' => 'integer',
             ];
         } else {
             $rules += [
                 'start_date' => 'required|date|before_or_equal:today',
                 'end_date' => 'required|date|after_or_equal:start_date|before_or_equal:today',
                 'quantity' => 'nullable|integer|min:0|max:1000000',
-                'work_status' => 'required|in:' . implode(',', array_keys(WorkTask::WORK_STATUSES)),
             ];
         }
         $data = $request->validate($rules, [
-            'quantity_unit.required' => 'Satuan output wajib diisi untuk tugas dengan turunan.',
-            'quantity_unit.required_with' => 'Satuan output wajib diisi bila jumlah diisi.',
+            'participants.required' => 'Pilih minimal satu peserta magang.',
+            'participants.min' => 'Pilih minimal satu peserta magang.',
+            'quantity_unit.required' => 'Jenis satuan wajib diisi untuk tugas dengan turunan.',
+            'quantity_unit.required_with' => 'Jenis satuan wajib diisi bila jumlah diisi.',
             'target_quantity.min' => 'Target minimal 1.',
             'deadline.after_or_equal' => 'Tenggat tidak boleh sebelum tanggal mulai tugas.',
             'end_date.after_or_equal' => 'Tanggal selesai tidak boleh sebelum tanggal mulai.',
@@ -333,7 +335,7 @@ class WorkTaskController extends Controller
 
         if ($task->title !== trim($data['title'])) { $changes[] = TaskHistory::change('Judul', $task->title, trim($data['title'])); }
         if ((string) $task->category !== $data['category']) { $changes[] = TaskHistory::change('Kategori', $task->category ?: '-', $data['category']); }
-        if ((string) $task->quantity_unit !== $unit) { $changes[] = TaskHistory::change('Satuan output', $task->quantity_unit ?: '-', $unit !== '' ? $unit : '-'); }
+        if ((string) $task->quantity_unit !== $unit) { $changes[] = TaskHistory::change('Jenis satuan', $task->quantity_unit ?: '-', $unit !== '' ? $unit : '-'); }
         if (optional($task->deadline)->toDateString() !== $deadline) {
             $changes[] = TaskHistory::change('Tenggat', $task->deadline ? $fmt($task->deadline) : '-', $deadline ? $fmt($deadline) : '-');
         }
@@ -361,18 +363,27 @@ class WorkTaskController extends Controller
 
             $hasQty = isset($data['quantity']) && $data['quantity'] !== null;
             $newQty = $hasQty ? (int) $data['quantity'] : null;
-            if ($task->quantity !== $newQty) { $changes[] = TaskHistory::change('Jumlah output', $task->quantity !== null ? (string) $task->quantity : '-', $hasQty ? (string) $newQty : '-'); }
-            if ((string) $task->work_status !== $data['work_status']) { $changes[] = TaskHistory::change('Status pengerjaan', $task->workStatusLabel() ?: '-', WorkTask::WORK_STATUSES[$data['work_status']]); }
+            if ($task->quantity !== $newQty) { $changes[] = TaskHistory::change('Total selesai', $task->quantity !== null ? (string) $task->quantity : '-', $hasQty ? (string) $newQty : '-'); }
 
             $update += [
                 'worked_on' => $newStart, 'start_date' => $newStart, 'end_date' => $newEnd,
-                'quantity' => $newQty, 'work_status' => $data['work_status'],
+                'quantity' => $newQty,
             ];
+        }
+
+        // Tugas dengan turunan: tambah / keluarkan peserta (progres peserta yang keluar tetap tersimpan).
+        $removedPaths = [];
+        if ($children) {
+            [$peopleNote, $removedPaths] = $this->syncChildParticipants($task, $viewer, $data['participants']);
+            if ($peopleNote) { $changes[] = $peopleNote; }
         }
 
         $task->update($update);
         if ($changes) {
             TaskHistory::record($task, $viewer, $changes);
+        }
+        foreach (array_unique($removedPaths) as $path) {
+            $this->deleteFileIfUnused($path);
         }
 
         flash()->success('Berhasil', 'Tugas harian diperbarui.');
@@ -647,12 +658,20 @@ class WorkTaskController extends Controller
     /** Mentor/admin mengedit tugas yang dicatat peserta: judul, deskripsi, dan rentang tanggal. */
     private function updateSelfTask(Request $request, WorkTask $task, User $viewer)
     {
-        $data = $request->validate([
+        $rules = [
             'title' => 'required|string|max:150',
             'description' => 'required|string|max:5000',
             'start_date' => 'required|date|before_or_equal:today',
             'end_date' => 'required|date|after_or_equal:start_date|before_or_equal:today',
-        ], [
+        ];
+        // Tugas dengan turunan: mentor/admin juga mengatur daftar peserta.
+        if ($task->has_children) {
+            $rules['participants'] = 'required|array|min:1';
+            $rules['participants.*'] = 'integer';
+        }
+        $data = $request->validate($rules, [
+            'participants.required' => 'Pilih minimal satu peserta magang.',
+            'participants.min' => 'Pilih minimal satu peserta magang.',
             'start_date.required' => 'Tanggal mulai wajib diisi.',
             'start_date.date' => 'Tanggal mulai tidak valid.',
             'start_date.before_or_equal' => 'Tanggal mulai tidak boleh melewati hari ini.',
@@ -688,6 +707,12 @@ class WorkTaskController extends Controller
             $changes[] = \App\Support\TaskHistory::change('Tanggal selesai', $oldEnd ? $fmt($oldEnd) : '-', $fmt($update['end_date']));
         }
 
+        $removedPaths = [];
+        if ($task->has_children) {
+            [$peopleNote, $removedPaths] = $this->syncChildParticipants($task, $viewer, $data['participants']);
+            if ($peopleNote) { $changes[] = $peopleNote; }
+        }
+
         $statusMoves = [];
 
         DB::transaction(function () use ($task, $update, &$statusMoves) {
@@ -698,6 +723,9 @@ class WorkTaskController extends Controller
         });
 
         \App\Support\TaskHistory::record($task, $viewer, array_merge($changes, \App\Support\TaskHistory::statusChanges($task, $statusMoves)));
+        foreach (array_unique($removedPaths) as $path) {
+            $this->deleteFileIfUnused($path);
+        }
 
         flash()->success('Berhasil', 'Tugas peserta diperbarui. Status seluruh peserta dikembalikan menjadi Belum.');
 
@@ -824,6 +852,70 @@ class WorkTaskController extends Controller
         flash()->success('Berhasil', 'Hasil pekerjaan dihapus.');
 
         return redirect()->route('work-logs.show', $task);
+    }
+
+    /**
+     * Sinkronkan daftar peserta tugas dengan turunan dari form edit (hanya mentor/admin).
+     * Mengeluarkan peserta TIDAK menghapus catatan progres (turunan) miliknya: progres tersimpan per pengguna
+     * sehingga Total selesai tetap utuh dan tampil kembali bila peserta ditambahkan lagi.
+     * Mengembalikan [catatan riwayat (atau null), path file lampiran yang perlu dibersihkan].
+     */
+    private function syncChildParticipants(WorkTask $task, User $viewer, array $selected): array
+    {
+        $allowedIds = User::peserta()->inScope($viewer)->pluck('users.id')->map(function ($id) { return (int) $id; })->all();
+        $selected = array_values(array_unique(array_map('intval', $selected)));
+
+        if (array_diff($selected, $allowedIds)) {
+            throw ValidationException::withMessages(['participants' => 'Ada peserta yang tidak valid atau di luar divisi Anda.']);
+        }
+
+        $task->load('assignees');
+        $currentAll = $task->assignees->pluck('user_id')->map(function ($id) { return (int) $id; })->all();
+        $currentManaged = array_values(array_intersect($currentAll, $allowedIds));
+        $toAdd = array_values(array_diff($selected, $currentAll));
+        $toRemove = array_values(array_diff($currentManaged, $selected));
+
+        if (! $toAdd && ! $toRemove) {
+            return [null, []];
+        }
+
+        if (count($currentAll) - count($toRemove) + count($toAdd) < 1) {
+            throw ValidationException::withMessages(['participants' => 'Tugas harus memiliki minimal satu peserta.']);
+        }
+
+        $removedPaths = [];
+
+        DB::transaction(function () use ($task, $toAdd, $toRemove, &$removedPaths) {
+            if ($toRemove) {
+                // Hanya baris peserta (beserta bukti/lampirannya) yang dihapus; work_task_progress tidak disentuh.
+                $ids = $task->assignees()->whereIn('user_id', $toRemove)->pluck('id');
+                $removedPaths = WorkTaskAttachment::whereIn('work_task_assignee_id', $ids)->whereNotNull('path')->pluck('path')->all();
+                $task->assignees()->whereIn('user_id', $toRemove)->delete();
+            }
+            foreach ($toAdd as $userId) {
+                WorkTaskAssignee::create([
+                    'work_task_id' => $task->id,
+                    'user_id' => $userId,
+                    'status' => WorkTaskAssignee::BELUM,
+                ]);
+            }
+            // Undangan kolaborasi yang masih menunggu untuk peserta yang baru ditambahkan dianggap sudah diterima.
+            if ($toAdd) {
+                $task->partnerRequests()->whereIn('to_user_id', $toAdd)->where('status', \App\Models\WorkTaskPartnerRequest::PENDING)
+                    ->update(['status' => \App\Models\WorkTaskPartnerRequest::ACCEPTED, 'responded_at' => now()]);
+            }
+        });
+
+        $task->unsetRelation('assignees');
+
+        $addedNames = $toAdd ? User::whereIn('id', $toAdd)->pluck('name')->all() : [];
+        $removedNames = $toRemove ? User::whereIn('id', $toRemove)->pluck('name')->all() : [];
+        $note = TaskHistory::note('Peserta', trim(
+            ($addedNames ? 'Menambah: ' . implode(', ', $addedNames) . '. ' : '')
+            . ($removedNames ? 'Mengeluarkan: ' . implode(', ', $removedNames) . ' (catatan progresnya tetap tersimpan).' : '')
+        ));
+
+        return [$note, $removedPaths];
     }
 
     /** Mentor/admin membatalkan tugas untuk seluruh peserta yang dikelolanya. Tugas tetap tampil di halaman mentor. */

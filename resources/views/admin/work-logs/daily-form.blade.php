@@ -40,13 +40,10 @@
 
                 {{-- Peserta: kartu. Pencatatan = pilih satu; dengan turunan = boleh banyak. --}}
                 <hr class="wl-divider">
-                @if ($isEdit)
+                @if ($isEdit && ! $children)
                     <div class="wl-field">
                         <label class="wl-label">Peserta</label>
                         <div>{{ $task->assignees->map(function ($a) { return optional($a->user)->name; })->filter()->implode(', ') }}</div>
-                        @if ($children)
-                            <div class="wl-hint">Daftar peserta tidak diubah dari sini agar turunan mereka tetap utuh.</div>
-                        @endif
                     </div>
                 @else
                     <div class="wl-section-head">
@@ -54,7 +51,7 @@
                             <h3 class="wl-section-title" style="margin-bottom: 4px;">Pilih peserta magang <span class="req" style="color: var(--cs-rose)">*</span></h3>
                             <div class="wl-sub">
                                 <span data-record-only @if ($children) hidden @endif>Pilih satu peserta. Pekerjaan dicatat atas namanya dan langsung berstatus selesai.</span>
-                                <span data-children-only @if (! $children) hidden @endif>Boleh lebih dari satu. Tiap peserta menambahkan turunannya sendiri, total output dijumlahkan.</span>
+                                <span data-children-only @if (! $children) hidden @endif>{{ $isEdit ? 'Centang untuk menambah peserta, hapus centang untuk mengeluarkan. Catatan progres (turunan) peserta yang dikeluarkan tetap tersimpan.' : 'Boleh lebih dari satu. Tiap peserta menambahkan turunannya sendiri, Total selesai dijumlahkan.' }}</span>
                             </div>
                         </div>
                         <span class="wl-pill-count" data-wl-count>0 dipilih</span>
@@ -66,7 +63,7 @@
                             <input type="text" class="wl-input" data-wl-psearch placeholder="Cari nama, divisi, jurusan, atau kampus...">
                         </div>
                         <div class="pc-pick-grid" data-pc-pick data-mode-pick data-single="{{ $children ? '0' : '1' }}" data-logo="{{ asset('assets/images/logo-plnsc.png') }}">
-                            @php($picked = array_map('intval', (array) old('participants', [])))
+                            @php($picked = array_map('intval', (array) old('participants', $currentIds ?? [])))
                             @foreach ($participants as $p)
                                 @php($on = in_array($p->id, $picked, true))
                                 <label class="pc-pick {{ $on ? 'is-selected' : '' }}"

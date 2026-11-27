@@ -7,7 +7,7 @@ use App\Support\TaskHistory;
 use App\Models\WorkTaskProgress;
 use Illuminate\Http\Request;
 
-/** Turunan tugas (tanggal pengerjaan + jumlah output) atau catatan progres bertahap. Satu tugas tetap satu ID. */
+/** Turunan tugas (tanggal pengerjaan + Total selesai) atau catatan progres bertahap. Satu tugas tetap satu ID. */
 class WorkTaskProgressController extends Controller
 {
     public function store(Request $request, WorkTask $task)
@@ -15,7 +15,7 @@ class WorkTaskProgressController extends Controller
         $me = auth()->user();
         abort_unless($task->canAddProgressBy($me), 403);
 
-        // Tugas dengan turunan: tiap turunan = tanggal pengerjaan + jumlah output (wajib). Tugas lain: catatan teks saja.
+        // Tugas dengan turunan: tiap turunan = tanggal pengerjaan + Total selesai (wajib). Tugas lain: catatan teks saja.
         $children = (bool) $task->has_children;
 
         $data = $request->validate([
@@ -25,9 +25,9 @@ class WorkTaskProgressController extends Controller
         ], [
             'entry_date.required' => 'Tanggal pengerjaan wajib diisi.',
             'entry_date.before_or_equal' => 'Tanggal pengerjaan tidak boleh melewati hari ini.',
-            'quantity.required' => 'Jumlah output wajib diisi.',
-            'quantity.integer' => 'Jumlah output harus berupa angka bulat.',
-            'quantity.min' => 'Jumlah output minimal 1.',
+            'quantity.required' => 'Total selesai wajib diisi.',
+            'quantity.integer' => 'Total selesai harus berupa angka bulat.',
+            'quantity.min' => 'Total selesai minimal 1.',
             'note.max' => 'Catatan maksimal 1000 karakter.',
         ]);
 

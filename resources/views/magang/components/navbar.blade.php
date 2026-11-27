@@ -9,9 +9,7 @@
             <a href="{{ route('welcome') }}#program">Program</a>
             <a href="{{ route('welcome') }}#tentang">Tentang Kami</a>
             <a href="{{ route('welcome') }}#faq">FAQ</a>
-            <a href="{{ route('magang.cek-status') }}">Portal Peserta</a>
-            <a href="{{ route('login') }}">Login</a>
-            <a href="{{ route('magang.form') }}" class="cs-btn">Daftar Magang</a>
+            <a href="{{ route('login') }}" class="cs-btn">Login</a>
         </nav>
 
         {{-- Tombol menu mobile --}}
@@ -26,9 +24,7 @@
         <a href="{{ route('welcome') }}#program">Program</a>
         <a href="{{ route('welcome') }}#tentang">Tentang Kami</a>
         <a href="{{ route('welcome') }}#faq">FAQ</a>
-        <a href="{{ route('magang.cek-status') }}">Portal Peserta</a>
         <a href="{{ route('login') }}">Login</a>
-        <a href="{{ route('magang.form') }}">Daftar Magang</a>
     </div>
 </header>
 

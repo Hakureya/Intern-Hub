@@ -14,8 +14,8 @@ return new class extends Migration
             $table->string('type', 10)->default('project')->after('id');      // project | daily
             $table->string('code', 30)->nullable()->unique()->after('type');  // PRJ-TIK-0001 / HRN-TIK-0001
             $table->string('category', 40)->nullable();                       // harian: kategori aktivitas
-            $table->unsignedInteger('quantity')->nullable();                  // harian: jumlah output
-            $table->string('quantity_unit', 40)->nullable();                  // harian: satuan output
+            $table->unsignedInteger('quantity')->nullable();                  // harian: Total selesai
+            $table->string('quantity_unit', 40)->nullable();                  // harian: Jenis satuan
             $table->string('work_status', 20)->nullable();                    // harian: done | progress | blocked
             $table->index('type');
         });

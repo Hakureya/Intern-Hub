@@ -339,3 +339,23 @@
 .wl-invite-box { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--cs-line, #d9e7ef); border-radius: 12px; }
 .wl-invite-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
 .wl-invite-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 0; border-top: 1px solid var(--cs-line, #e6eef4); font-size: 13.5px; }
+
+
+/* Header Log Pekerjaan bermotif bunga biru (warna sama dengan kartu Laporan Bulanan/Akhir & hero Home).
+   public/images/batik-log.png dipakai sebagai masker: warna diatur di sini. Saat kursor di atas box, warna lebih tegas + motif berputar pelan.
+   Lapisan motif dibuat persegi (150% lebar box) dan berputar di tengah, sehingga tidak ada sudut kosong saat berputar. */
+.wl-head--batik { position: relative; isolation: isolate; overflow: hidden; align-items: center; padding: 30px 28px; border-radius: 20px; background: #f1f8fd; border: 1px solid #d6e8f5; }
+.wl-head--batik::before { content: ""; position: absolute; left: 50%; top: 50%; width: 150%; aspect-ratio: 1 / 1; z-index: 0; pointer-events: none; background-color: #a9d0ea; opacity: .6;
+    transform: translate(-50%, -50%) rotate(0deg);
+    -webkit-mask-image: url("../images/batik-log.png"); mask-image: url("../images/batik-log.png");
+    -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;
+    -webkit-mask-size: cover; mask-size: cover;
+    animation: wl-batik-spin 40s linear infinite; animation-play-state: paused;   /* 40s = satu putaran penuh; kecilkan untuk lebih cepat */
+    transition: opacity .4s ease, background-color .4s ease; }
+.wl-head--batik:hover::before { background-color: #5a9fd4; opacity: .8; animation-play-state: running; }
+.wl-head--batik > * { position: relative; z-index: 2; }
+/* Halo tipis agar tulisan tetap terbaca di atas motif */
+.wl-head--batik .wl-title, .wl-head--batik .wl-sub { text-shadow: 0 0 4px #f1f8fd, 0 0 10px #f1f8fd, 0 0 18px #f1f8fd; }
+@keyframes wl-batik-spin { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .wl-head--batik::before { animation: none; } }
+@media (max-width: 640px) { .wl-head--batik { padding: 22px 18px; } .wl-head--batik::before { width: 220%; } }

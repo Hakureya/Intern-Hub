@@ -1,6 +1,6 @@
 {{--
     Turunan tugas / catatan progres pada satu tugas. Param: $task.
-    - Tugas harian dengan turunan : tiap turunan = tanggal pengerjaan + jumlah output (+ catatan opsional); total & bar target di atasnya.
+    - Tugas harian dengan turunan : tiap turunan = tanggal pengerjaan + Total selesai (+ catatan opsional); total & bar target di atasnya.
     - Tugas proyek                 : catatan progres bertahap (garis waktu).
     - Tugas harian pencatatan      : tidak ada bagian ini.
 --}}
@@ -32,7 +32,7 @@
             @if ($pgHasTarget)
                 @if ($pgPct >= 100) Target tercapai. @else Sisa {{ number_format(max(0, $task->target_quantity - $pgTotal), 0, ',', '.') }} {{ $task->quantity_unit }}. @endif
             @else
-                Total output dari seluruh turunan.
+                Total selesai dari seluruh turunan.
             @endif
             @if ($task->deadline)
                 Tenggat {{ $task->deadline->locale('id')->translatedFormat('d M Y') }}@if ($pgPct < 100 && $task->isPastDeadline()) (sudah lewat)@endif.
@@ -93,7 +93,7 @@
             </div>
             @if ($pgChildren)
                 <div class="wl-field" style="margin: 0;">
-                    <label class="wl-label" for="pg-qty-{{ $task->id }}">Jumlah output ({{ $task->quantity_unit }})</label>
+                    <label class="wl-label" for="pg-qty-{{ $task->id }}">Total selesai ({{ $task->quantity_unit }})</label>
                     <input type="number" id="pg-qty-{{ $task->id }}" name="quantity" class="wl-input" min="1" max="1000000" step="1" required
                         placeholder="Contoh: 120" value="{{ old('quantity') }}">
                 </div>
@@ -102,7 +102,7 @@
         <div class="wl-field" style="margin: 10px 0 8px;">
             <label class="wl-label" for="pg-note-{{ $task->id }}">Catatan {{ $pgChildren ? '(opsional)' : '' }}</label>
             <textarea id="pg-note-{{ $task->id }}" name="note" class="wl-textarea" maxlength="1000" rows="2"
-                placeholder="{{ $pgChildren ? 'Contoh: Bantex 2019 urutan 1–12.' : 'Contoh: Dokumen PIB lengkap, menunggu Inward Manifest.' }}">{{ old('note') }}</textarea>
+                placeholder="{{ $pgChildren ? 'Contoh: Bantex 2019 urutan 1–12.' : 'Masukkan kemajuan terbaru proyek' }}">{{ old('note') }}</textarea>
         </div>
         @foreach (['entry_date', 'quantity', 'note'] as $k)
             @error($k) <div class="wl-error">{{ $message }}</div> @enderror
